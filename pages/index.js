@@ -11,14 +11,11 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
-    googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" }
+    googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
+    box: { id: "box", label: "BOX", src: SERVICES[1].url }
   };
-  const [tabs, setTabs] = useState(["reearth","googlemap"]);
+  const [tabs, setTabs] = useState(["reearth","googlemap","box"]);
   const [activeTab, setActiveTab] = useState("reearth");
-  // 左パネルのBOXタブが選択されているか
-  const [leftBoxActive, setLeftBoxActive] = useState(false);
-  // プレビュー中のファイル（ファイル名の文字列）。nullならプレビューなし
-  const [previewFile, setPreviewFile] = useState(null);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -51,37 +48,6 @@ export default function Home() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {/* BOX を左パネルのタブとして表示 */}
-              <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-                <button
-                  onClick={() => { setLeftBoxActive(true); setActiveTab(null); }}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: leftBoxActive ? "#0070f3" : "white",
-                    color: leftBoxActive ? "white" : "black",
-                    border: "1px solid #ccc",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  BOX
-                </button>
-                <button
-                  onClick={() => { setLeftBoxActive(false); setActiveTab("reearth"); }}
-                  style={{
-                    padding: "8px 12px",
-                    backgroundColor: !leftBoxActive ? "#fff" : "white",
-                    color: "#333",
-                    border: "1px solid #ccc",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                  }}
-                >
-                  通常
-                </button>
-              </div>
-
-              {/* サービスボタン一覧（BOX と Re:Earth は左タブで扱うため除外） */}
               {SERVICES.filter(s => !["Re:Earth", "BOX"].includes(s.name)).map((service) => (
                 <button
                   key={service.name}
@@ -99,32 +65,6 @@ export default function Home() {
                   {service.name}
                 </button>
               ))}
-
-              {/* 簡易ファイルリスト + プレビューボタン */}
-              <div style={{ marginTop: "12px" }}>
-                <div style={{ fontSize: "0.9rem", marginBottom: "6px" }}>ファイル</div>
-                {[
-                  "README.md",
-                  "specs/diagram.png",
-                  "docs/guide.pdf"
-                ].map((f) => (
-                  <div key={f} style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "6px" }}>
-                    <div style={{ flex: 1, fontSize: "0.9rem" }}>{f}</div>
-                    <button
-                      onClick={() => setPreviewFile(f)}
-                      style={{ padding: "6px 8px", cursor: "pointer" }}
-                    >プレビュー</button>
-                  </div>
-                ))}
-                {previewFile && (
-                  <div style={{ marginTop: "8px", fontSize: "0.9rem" }}>
-                    プレビュー中: {previewFile}
-                    <div>
-                      <button onClick={() => setPreviewFile(null)} style={{ marginTop: "6px", padding: "6px 8px" }}>閉じる</button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
@@ -213,7 +153,7 @@ export default function Home() {
             src={SERVICES[0].url}
             width="100%"
             height="100%"
-            style={{ border: "none", flex: 1, display: activeTab === "reearth" && !leftBoxActive ? "block" : "none" }}
+            style={{ border: "none", flex: 1, display: activeTab === "reearth" ? "block" : "none" }}
             allowFullScreen
             allow="clipboard-read; clipboard-write"
           />
@@ -222,7 +162,7 @@ export default function Home() {
             src={SERVICES[1].url}
             width="100%"
             height="100%"
-            style={{ border: "none", flex: 1, display: leftBoxActive && previewFile ? "block" : "none" }}
+            style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
             allowFullScreen
             allow="clipboard-read; clipboard-write"
           />
@@ -231,7 +171,7 @@ export default function Home() {
             src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp"
             width="100%"
             height="100%"
-            style={{ border: 0, flex: 1, display: activeTab === "googlemap" && !leftBoxActive ? "block" : "none" }}
+            style={{ border: 0, flex: 1, display: activeTab === "googlemap" ? "block" : "none" }}
             allowFullScreen=""
             loading="lazy"
           />
