@@ -37,7 +37,9 @@ export default function Home() {
         src={selectedUrl}
         width="100%"
         height="600"
-        style={{ border: "1px solid #ccc", borderRadius: 8 }}
+        style={{ border: "none", borderRadius: 8 }}
+        allowFullScreen
+        allow="clipboard-read; clipboard-write"
       />
     </div>
   );
