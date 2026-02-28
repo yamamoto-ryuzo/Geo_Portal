@@ -9,6 +9,12 @@ const SERVICES = [
 export default function Home() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const TAB_DEFS = {
+    reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
+    googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
+    box: { id: "box", label: "BOX", src: SERVICES[1].url }
+  };
+  const [tabs, setTabs] = useState(["reearth","googlemap","box"]);
   const [activeTab, setActiveTab] = useState("reearth");
 
   return (
@@ -102,50 +108,42 @@ export default function Home() {
 
       {/* 右メインエリア: コンテンツ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-        {/* タブ UI */}
+        {/* タブ UI (ドラッグで並べ替え可) */}
         <div style={{ display: "flex", borderBottom: "1px solid #ddd", backgroundColor: "#f5f5f5" }}>
-          <button
-            onClick={() => setActiveTab("reearth")}
-            style={{
-              padding: "10px 20px",
-              border: "none",
-              backgroundColor: activeTab === "reearth" ? "white" : "transparent",
-              borderBottom: activeTab === "reearth" ? "2px solid #0070f3" : "none",
-              cursor: "pointer",
-              fontWeight: activeTab === "reearth" ? "bold" : "normal",
-              color: activeTab === "reearth" ? "#0070f3" : "#333",
-            }}
-          >
-            Re:Earth
-          </button>
-          <button
-            onClick={() => setActiveTab("box")}
-            style={{
-              padding: "10px 20px",
-              border: "none",
-              backgroundColor: activeTab === "box" ? "white" : "transparent",
-              borderBottom: activeTab === "box" ? "2px solid #0070f3" : "none",
-              cursor: "pointer",
-              fontWeight: activeTab === "box" ? "bold" : "normal",
-              color: activeTab === "box" ? "#0070f3" : "#333",
-            }}
-          >
-            BOX
-          </button>
-          <button
-            onClick={() => setActiveTab("googlemap")}
-            style={{
-              padding: "10px 20px",
-              border: "none",
-              backgroundColor: activeTab === "googlemap" ? "white" : "transparent",
-              borderBottom: activeTab === "googlemap" ? "2px solid #0070f3" : "none",
-              cursor: "pointer",
-              fontWeight: activeTab === "googlemap" ? "bold" : "normal",
-              color: activeTab === "googlemap" ? "#0070f3" : "#333",
-            }}
-          >
-            Googleマップ
-          </button>
+          {tabs.map((tabId, idx) => {
+            const tab = TAB_DEFS[tabId];
+            return (
+              <button
+                key={tab.id}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData('text/tab', String(idx))}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  const from = Number(e.dataTransfer.getData('text/tab'));
+                  const to = idx;
+                  if (from === to) return;
+                  setTabs(prev => {
+                    const arr = [...prev];
+                    const [moved] = arr.splice(from, 1);
+                    arr.splice(to, 0, moved);
+                    return arr;
+                  });
+                }}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: "10px 20px",
+                  border: "none",
+                  backgroundColor: activeTab === tab.id ? "white" : "transparent",
+                  borderBottom: activeTab === tab.id ? "2px solid #0070f3" : "none",
+                  cursor: "pointer",
+                  fontWeight: activeTab === tab.id ? "bold" : "normal",
+                  color: activeTab === tab.id ? "#0070f3" : "#333",
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* コンテンツ表示エリア */}
