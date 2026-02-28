@@ -101,25 +101,6 @@ export default function Home() {
 
       {/* 右メインエリア: コンテンツ */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-        {!isSidebarOpen && (
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            style={{
-              position: "absolute",
-              top: "10px",
-              left: "10px",
-              zIndex: 1000,
-              padding: "8px 12px",
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              border: "1px solid #ccc",
-              borderRadius: "4px",
-              cursor: "pointer",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
-            }}
-          >
-            ☰ メニュー
-          </button>
-        )}
         <iframe
           title="Service Frame"
           src={selectedUrl}
