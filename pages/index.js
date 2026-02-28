@@ -119,6 +119,20 @@ export default function Home() {
             Re:Earth
           </button>
           <button
+            onClick={() => setActiveTab("box")}
+            style={{
+              padding: "10px 20px",
+              border: "none",
+              backgroundColor: activeTab === "box" ? "white" : "transparent",
+              borderBottom: activeTab === "box" ? "2px solid #0070f3" : "none",
+              cursor: "pointer",
+              fontWeight: activeTab === "box" ? "bold" : "normal",
+              color: activeTab === "box" ? "#0070f3" : "#333",
+            }}
+          >
+            BOX
+          </button>
+          <button
             onClick={() => setActiveTab("googlemap")}
             style={{
               padding: "10px 20px",
@@ -137,11 +151,20 @@ export default function Home() {
         {/* コンテンツ表示エリア */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <iframe
-            title="Service Frame"
-            src={selectedUrl}
+            title="Re:Earth Frame"
+            src={SERVICES[0].url}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "reearth" ? "block" : "none" }}
+            allowFullScreen
+            allow="clipboard-read; clipboard-write"
+          />
+          <iframe
+            title="BOX Frame"
+            src={SERVICES[1].url}
+            width="100%"
+            height="100%"
+            style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
             allowFullScreen
             allow="clipboard-read; clipboard-write"
           />
