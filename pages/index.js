@@ -23,6 +23,14 @@ export default function Home() {
             <option key={s.name} value={s.url}>{s.name}</option>
           ))}
         </select>
+        <a
+          href={selectedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ marginLeft: 16, textDecoration: "none", color: "#0070f3" }}
+        >
+          別ウィンドウで開く ↗
+        </a>
       </div>
       <iframe
         title="Service Frame"
