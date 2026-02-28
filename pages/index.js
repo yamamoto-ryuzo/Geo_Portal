@@ -9,6 +9,7 @@ const SERVICES = [
 export default function Home() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(true);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -111,6 +112,90 @@ export default function Home() {
           allow="clipboard-read; clipboard-write"
         />
       </div>
+
+      {/* 右サイドバー: Googleマップ連携 */}
+      {isRightSidebarOpen ? (
+        <div style={{
+          width: "250px",
+          minWidth: "250px",
+          backgroundColor: "#f5f5f5",
+          borderLeft: "1px solid #ddd",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <h2 style={{ fontSize: "1.1rem", margin: 0 }}>Googleマップ連携</h2>
+            <button
+              onClick={() => setIsRightSidebarOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "1.2rem",
+                cursor: "pointer",
+                padding: "0 5px"
+              }}
+              title="メニューを閉じる"
+            >
+              ✕
+            </button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            <p style={{ fontSize: "0.8rem", margin: 0, color: "#666" }}>
+              GoogleマップのURLを入力して、表示位置を同期します。
+            </p>
+            <input
+              type="text"
+              placeholder="https://www.google.com/maps/..."
+              style={{
+                padding: "8px",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                fontSize: "0.9rem"
+              }}
+            />
+            <button
+              style={{
+                padding: "8px",
+                backgroundColor: "#0070f3",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontWeight: "bold"
+              }}
+            >
+              同期する
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          width: "32px",
+          minWidth: "32px",
+          backgroundColor: "#f5f5f5",
+          borderLeft: "1px solid #ddd",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center"
+        }}>
+          <button
+            onClick={() => setIsRightSidebarOpen(true)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "1.5rem",
+              padding: "0",
+              marginTop: "8px"
+            }}
+            title="メニューを開く"
+          >
+            <span role="img" aria-label="地図">🗺️</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
