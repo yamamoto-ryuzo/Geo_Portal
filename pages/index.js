@@ -113,19 +113,18 @@ export default function Home() {
         />
       </div>
 
-      {/* 右サイドバー: Googleマップ連携 */}
+      {/* 右サイドバー: Googleマップ */}
       {isRightSidebarOpen ? (
         <div style={{
-          width: "250px",
-          minWidth: "250px",
+          width: "400px",
+          minWidth: "400px",
           backgroundColor: "#f5f5f5",
           borderLeft: "1px solid #ddd",
-          padding: "20px",
           display: "flex",
           flexDirection: "column"
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-            <h2 style={{ fontSize: "1.1rem", margin: 0 }}>Googleマップ連携</h2>
+          <div style={{ padding: "10px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ddd" }}>
+            <h2 style={{ fontSize: "1rem", margin: 0 }}>Googleマップ</h2>
             <button
               onClick={() => setIsRightSidebarOpen(false)}
               style={{
@@ -140,33 +139,16 @@ export default function Home() {
               ✕
             </button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <p style={{ fontSize: "0.8rem", margin: 0, color: "#666" }}>
-              GoogleマップのURLを入力して、表示位置を同期します。
-            </p>
-            <input
-              type="text"
-              placeholder="https://www.google.com/maps/..."
-              style={{
-                padding: "8px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                fontSize: "0.9rem"
-              }}
+          <div style={{ flex: 1 }}>
+            <iframe
+              title="Google Maps"
+              src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp"
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen=""
+              loading="lazy"
             />
-            <button
-              style={{
-                padding: "8px",
-                backgroundColor: "#0070f3",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontWeight: "bold"
-              }}
-            >
-              同期する
-            </button>
           </div>
         </div>
       ) : (
