@@ -10,37 +10,62 @@ export default function Home() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 32 }}>
-      <h1>ポータルサイト</h1>
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="service-select">サービス選択: </label>
-        <select
-          id="service-select"
-          value={selectedUrl}
-          onChange={e => setSelectedUrl(e.target.value)}
-        >
-          {SERVICES.map(s => (
-            <option key={s.name} value={s.url}>{s.name}</option>
+    <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
+      {/* 左サイドバー: コントロール */}
+      <div style={{
+        width: "250px",
+        backgroundColor: "#f5f5f5",
+        borderRight: "1px solid #ddd",
+        padding: "20px",
+        display: "flex",
+        flexDirection: "column"
+      }}>
+        <h1 style={{ fontSize: "1.2rem", marginBottom: "20px" }}>ポータルサイト</h1>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {SERVICES.map((service) => (
+            <button
+              key={service.name}
+              onClick={() => setSelectedUrl(service.url)}
+              style={{
+                padding: "10px",
+                textAlign: "left",
+                backgroundColor: selectedUrl === service.url ? "#0070f3" : "white",
+                color: selectedUrl === service.url ? "white" : "black",
+                border: "1px solid #ccc",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              {service.name}
+            </button>
           ))}
-        </select>
-        <a
-          href={selectedUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ marginLeft: 16, textDecoration: "none", color: "#0070f3" }}
-        >
-          別ウィンドウで開く ↗
-        </a>
+        </div>
+
+        <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
+          <a
+            href={selectedUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
+          >
+            別ウィンドウで開く ↗
+          </a>
+        </div>
       </div>
-      <iframe
-        title="Service Frame"
-        src={selectedUrl}
-        width="100%"
-        height="600"
-        style={{ border: "none", borderRadius: 8 }}
-        allowFullScreen
-        allow="clipboard-read; clipboard-write"
-      />
+
+      {/* 右メインエリア: コンテンツ */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <iframe
+          title="Service Frame"
+          src={selectedUrl}
+          width="100%"
+          height="100%"
+          style={{ border: "none", flex: 1 }}
+          allowFullScreen
+          allow="clipboard-read; clipboard-write"
+        />
+      </div>
     </div>
   );
 }
