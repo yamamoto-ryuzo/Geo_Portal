@@ -8,54 +8,92 @@ const SERVICES = [
 
 export default function Home() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
       {/* 左サイドバー: コントロール */}
-      <div style={{
-        width: "250px",
-        backgroundColor: "#f5f5f5",
-        borderRight: "1px solid #ddd",
-        padding: "20px",
-        display: "flex",
-        flexDirection: "column"
-      }}>
-        <h1 style={{ fontSize: "1.2rem", marginBottom: "20px" }}>ポータルサイト</h1>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {SERVICES.map((service) => (
+      {isSidebarOpen && (
+        <div style={{
+          width: "250px",
+          minWidth: "250px",
+          backgroundColor: "#f5f5f5",
+          borderRight: "1px solid #ddd",
+          padding: "20px",
+          display: "flex",
+          flexDirection: "column"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+            <h1 style={{ fontSize: "1.2rem", margin: 0 }}>ポータルサイト</h1>
             <button
-              key={service.name}
-              onClick={() => setSelectedUrl(service.url)}
+              onClick={() => setIsSidebarOpen(false)}
               style={{
-                padding: "10px",
-                textAlign: "left",
-                backgroundColor: selectedUrl === service.url ? "#0070f3" : "white",
-                color: selectedUrl === service.url ? "white" : "black",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
+                background: "none",
+                border: "none",
+                fontSize: "1.2rem",
                 cursor: "pointer",
+                padding: "0 5px"
               }}
+              title="メニューを閉じる"
             >
-              {service.name}
+              ✕
             </button>
-          ))}
-        </div>
+          </div>
 
-        <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
-          <a
-            href={selectedUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
-          >
-            別ウィンドウで開く ↗
-          </a>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {SERVICES.map((service) => (
+              <button
+                key={service.name}
+                onClick={() => setSelectedUrl(service.url)}
+                style={{
+                  padding: "10px",
+                  textAlign: "left",
+                  backgroundColor: selectedUrl === service.url ? "#0070f3" : "white",
+                  color: selectedUrl === service.url ? "white" : "black",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                }}
+              >
+                {service.name}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
+            <a
+              href={selectedUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
+            >
+              別ウィンドウで開く ↗
+            </a>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 右メインエリア: コンテンツ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
+        {!isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            style={{
+              position: "absolute",
+              top: "10px",
+              left: "10px",
+              zIndex: 1000,
+              padding: "8px 12px",
+              backgroundColor: "rgba(255, 255, 255, 0.9)",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              cursor: "pointer",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+            }}
+          >
+            ☰ メニュー
+          </button>
+        )}
         <iframe
           title="Service Frame"
           src={selectedUrl}
