@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 const SERVICES = [
-  { name: "Re:Earth", url: "https://your-reearth-url.example.com" },
+  { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
   { name: "BOX", url: "https://app.box.com/login" },
   { name: "Backlog", url: "https://your-backlog-url.example.com" },
 ];
