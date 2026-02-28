@@ -42,7 +42,7 @@ export default function Home() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {SERVICES.map((service) => (
+              {SERVICES.filter(s => !["Re:Earth", "BOX"].includes(s.name)).map((service) => (
                 <button
                   key={service.name}
                   onClick={() => setSelectedUrl(service.url)}
