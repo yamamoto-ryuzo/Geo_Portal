@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
-  { name: "BOX", url: "https://app.box.com/login" },
+  { name: "BOX", url: "https://www.box.com/ja-jp" },
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
