@@ -3,7 +3,7 @@ import { PortalProvider, usePortal } from "../src/PortalContext";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
-  { name: "BOX", url: "https://app.box.com/embed/s/sf63pliz85iiv8be9mv6ps4ul7yglbpm?sortColumn=date" },
+  { name: "BOX", url: "https://app.box.com/embed/s/example12345abcdefg" },
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
