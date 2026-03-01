@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PortalProvider, usePortal } from "../src/PortalContext";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
@@ -6,11 +7,10 @@ const SERVICES = [
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
-export default function Home() {
+function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [reearthUrl, setReearthUrl] = useState(SERVICES[0].url);
-  const [boxUrl, setBoxUrl] = useState(SERVICES[1].url);
+  const { reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, applyPreview, save, resetTo } = usePortal();
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
@@ -51,7 +51,7 @@ export default function Home() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {SERVICES.filter(s => !["Re:Earth", "BOX"].includes(s.name)).map((service) => (
+              {SERVICES.filter(s => !["Re:Earth", "BOX", "Backlog"].includes(s.name)).map((service) => (
                 <button
                   key={service.name}
                   onClick={() => setSelectedUrl(service.url)}
@@ -159,21 +159,23 @@ export default function Home() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <iframe
             title="Re:Earth Frame"
-            src={reearthUrl}
+            src={activeTab === "reearth" ? reearthUrl : "about:blank"}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "reearth" ? "block" : "none" }}
             allowFullScreen
             allow="clipboard-read; clipboard-write"
+            loading="lazy"
           />
           <iframe
             title="BOX Frame"
-            src={boxUrl}
+            src={activeTab === "box" ? boxUrl : "about:blank"}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
             allowFullScreen
             allow="clipboard-read; clipboard-write"
+            loading="lazy"
           />
           <iframe
             title="Google Maps"
@@ -191,8 +193,8 @@ export default function Home() {
               <label style={{ display: 'block', marginBottom: '6px' }}>1. Re:Earth 表示アドレス</label>
               <input
                 type="text"
-                value={reearthUrl}
-                onChange={(e) => setReearthUrl(e.target.value)}
+                value={previewReearth}
+                onChange={(e) => setPreviewReearth(e.target.value)}
                 style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
               />
             </div>
@@ -200,14 +202,28 @@ export default function Home() {
               <label style={{ display: 'block', marginBottom: '6px' }}>2. BOX ウィジェット表示アドレス</label>
               <input
                 type="text"
-                value={boxUrl}
-                onChange={(e) => setBoxUrl(e.target.value)}
+                value={previewBox}
+                onChange={(e) => setPreviewBox(e.target.value)}
                 style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
               />
+            </div>
+
+            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+              <button onClick={() => { applyPreview(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>プレビュー</button>
+              <button onClick={() => { if (save()) { alert('保存しました'); } else { alert('保存に失敗しました'); } }} style={{ padding: '8px 12px', cursor: 'pointer' }}>保存</button>
+              <button onClick={() => { resetTo({ reearth: SERVICES[0].url, box: SERVICES[1].url }); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>初期化</button>
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <PortalProvider initialReearth={SERVICES[0].url} initialBox={SERVICES[1].url}>
+      <Inner />
+    </PortalProvider>
   );
 }
