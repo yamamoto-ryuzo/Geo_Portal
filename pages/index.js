@@ -68,13 +68,7 @@ function Inner() {
                   {service.name}
                 </button>
               ))}
-              {/* 設定情報を開くボタン: 設定タブを開き、保存値を表示 */}
-              <button
-                onClick={() => { setActiveTab('settings'); alert(`保存済み設定\nRe:Earth: ${reearthUrl}\nBOX: ${boxUrl}`); }}
-                style={{ marginTop: '8px', padding: '10px', textAlign: 'left', border: '1px solid #ccc', borderRadius: '4px', background: 'white', cursor: 'pointer' }}
-              >
-                設定情報を開く
-              </button>
+              {/* (removed) 設定情報を開く button */}
             </div>
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
