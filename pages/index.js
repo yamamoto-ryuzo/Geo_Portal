@@ -217,6 +217,19 @@ function Inner() {
             <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
               <button onClick={() => { applyPreview(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>プレビュー</button>
               <button onClick={() => { if (applyPreviewAndSave()) { alert('保存しました'); } else { alert('保存に失敗しました'); } }} style={{ padding: '8px 12px', cursor: 'pointer' }}>保存</button>
+              <button
+                onClick={() => {
+                  // 保存して設定内容を新しいタブで開く（JSON 表示）
+                  const ok = applyPreviewAndSave ? applyPreviewAndSave() : false;
+                  if (!ok) { alert('保存に失敗しました'); return; }
+                  const payload = { reearth: previewReearth, box: previewBox };
+                  const url = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+                  window.open(url, '_blank');
+                }}
+                style={{ padding: '8px 12px', cursor: 'pointer' }}
+              >
+                開く
+              </button>
               <button onClick={() => { resetTo({ reearth: SERVICES[0].url, box: SERVICES[1].url }); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>初期化</button>
             </div>
           </div>
