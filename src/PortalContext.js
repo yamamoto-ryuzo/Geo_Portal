@@ -47,6 +47,20 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     }
   }
 
+  // Apply the preview values and persist them immediately.
+  function applyPreviewAndSave() {
+    try {
+      // Persist preview values first to avoid async state timing issues
+      localStorage.setItem(STORAGE_REEARTH, previewReearth || "");
+      localStorage.setItem(STORAGE_BOX, previewBox || "");
+    } catch (e) {
+      return false;
+    }
+    setReearthUrl(previewReearth);
+    setBoxUrl(previewBox);
+    return true;
+  }
+
   function resetTo(initialVals = {}) {
     const { reearth = initialReearth, box = initialBox } = initialVals;
     setPreviewReearth(reearth || "");
