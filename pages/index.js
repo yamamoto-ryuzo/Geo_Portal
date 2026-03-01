@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
-  { name: "BOX", url: "https://app.box.com/embed/s/28rzb0y0oqh25dv16p6j4swayqbg6z8a?sortColumn=date" },
+  { name: "BOX", url: "https://app.box.com/embed/s/sf63pliz85iiv8be9mv6ps4ul7yglbpm?sortColumn=date" },
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
@@ -13,8 +13,10 @@ export default function Home() {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
     box: { id: "box", label: "BOX", src: SERVICES[1].url }
+    ,info: { id: "info", label: "INFO" },
+    settings: { id: "settings", label: "設定" }
   };
-  const [tabs, setTabs] = useState(["reearth","googlemap","box"]);
+  const [tabs, setTabs] = useState(["reearth","googlemap","box","info","settings"]);
   const [activeTab, setActiveTab] = useState("reearth");
 
   return (
@@ -65,6 +67,20 @@ export default function Home() {
                   {service.name}
                 </button>
               ))}
+              <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
+                <button
+                  onClick={() => setActiveTab('info')}
+                  style={{ padding: "8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: activeTab === 'info' ? '#0070f3' : 'white', color: activeTab === 'info' ? 'white' : 'black' }}
+                >
+                  INFO
+                </button>
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  style={{ padding: "8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: activeTab === 'settings' ? '#0070f3' : 'white', color: activeTab === 'settings' ? 'white' : 'black' }}
+                >
+                  設定
+                </button>
+              </div>
             </div>
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
@@ -175,6 +191,24 @@ export default function Home() {
             allowFullScreen=""
             loading="lazy"
           />
+          {/* INFO パネル */}
+          <div style={{ flex: 1, padding: "20px", display: activeTab === "info" ? "block" : "none", overflow: "auto" }}>
+            <h2>INFO</h2>
+            <p>ここはポータルの情報パネルです。リンクや説明を置いてください。</p>
+            <ul>
+              <li><a href="https://reearth.io" target="_blank" rel="noopener noreferrer">Re:Earth</a></li>
+              <li><a href="https://box.com" target="_blank" rel="noopener noreferrer">BOX</a></li>
+            </ul>
+          </div>
+
+          {/* 設定パネル */}
+          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "block" : "none", overflow: "auto" }}>
+            <h2>設定</h2>
+            <p>簡易設定をここに配置します。</p>
+            <label style={{ display: 'block', marginTop: '8px' }}>サイドバー表示
+              <input type="checkbox" style={{ marginLeft: '8px' }} checked={isSidebarOpen} onChange={() => setIsSidebarOpen(prev => !prev)} />
+            </label>
+          </div>
         </div>
       </div>
     </div>
