@@ -9,14 +9,15 @@ const SERVICES = [
 export default function Home() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [reearthUrl, setReearthUrl] = useState(SERVICES[0].url);
+  const [boxUrl, setBoxUrl] = useState(SERVICES[1].url);
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
-    box: { id: "box", label: "BOX", src: SERVICES[1].url }
-    ,info: { id: "info", label: "INFO" },
+    box: { id: "box", label: "BOX", src: SERVICES[1].url },
     settings: { id: "settings", label: "設定" }
   };
-  const [tabs, setTabs] = useState(["reearth","googlemap","box","info","settings"]);
+  const [tabs, setTabs] = useState(["reearth","googlemap","box","settings"]);
   const [activeTab, setActiveTab] = useState("reearth");
 
   return (
@@ -67,31 +68,23 @@ export default function Home() {
                   {service.name}
                 </button>
               ))}
-              <div style={{ display: "flex", gap: "8px", marginTop: "8px" }}>
-                <button
-                  onClick={() => setActiveTab('info')}
-                  style={{ padding: "8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: activeTab === 'info' ? '#0070f3' : 'white', color: activeTab === 'info' ? 'white' : 'black' }}
-                >
-                  INFO
-                </button>
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  style={{ padding: "8px", cursor: "pointer", borderRadius: "4px", border: "1px solid #ccc", background: activeTab === 'settings' ? '#0070f3' : 'white', color: activeTab === 'settings' ? 'white' : 'black' }}
-                >
-                  設定
-                </button>
-              </div>
+              {/* left sidebar buttons removed as requested */}
             </div>
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
-              <a
-                href={selectedUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
-              >
-                別ウィンドウで開く ↗
-              </a>
+              {(() => {
+                const currentOpenUrl = activeTab === 'reearth' ? reearthUrl : activeTab === 'box' ? boxUrl : selectedUrl;
+                return (
+                  <a
+                    href={currentOpenUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
+                  >
+                    別ウィンドウで開く ↗
+                  </a>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -166,7 +159,7 @@ export default function Home() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <iframe
             title="Re:Earth Frame"
-            src={SERVICES[0].url}
+            src={reearthUrl}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "reearth" ? "block" : "none" }}
@@ -175,7 +168,7 @@ export default function Home() {
           />
           <iframe
             title="BOX Frame"
-            src={SERVICES[1].url}
+            src={boxUrl}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
@@ -191,23 +184,27 @@ export default function Home() {
             allowFullScreen=""
             loading="lazy"
           />
-          {/* INFO パネル */}
-          <div style={{ flex: 1, padding: "20px", display: activeTab === "info" ? "block" : "none", overflow: "auto" }}>
-            <h2>INFO</h2>
-            <p>ここはポータルの情報パネルです。リンクや説明を置いてください。</p>
-            <ul>
-              <li><a href="https://reearth.io" target="_blank" rel="noopener noreferrer">Re:Earth</a></li>
-              <li><a href="https://box.com" target="_blank" rel="noopener noreferrer">BOX</a></li>
-            </ul>
-          </div>
-
-          {/* 設定パネル */}
+          {/* 設定パネル: Re:Earth と BOX の表示URLを設定 */}
           <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "block" : "none", overflow: "auto" }}>
             <h2>設定</h2>
-            <p>簡易設定をここに配置します。</p>
-            <label style={{ display: 'block', marginTop: '8px' }}>サイドバー表示
-              <input type="checkbox" style={{ marginLeft: '8px' }} checked={isSidebarOpen} onChange={() => setIsSidebarOpen(prev => !prev)} />
-            </label>
+            <div style={{ marginTop: '8px' }}>
+              <label style={{ display: 'block', marginBottom: '6px' }}>1. Re:Earth 表示アドレス</label>
+              <input
+                type="text"
+                value={reearthUrl}
+                onChange={(e) => setReearthUrl(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px' }}>2. BOX ウィジェット表示アドレス</label>
+              <input
+                type="text"
+                value={boxUrl}
+                onChange={(e) => setBoxUrl(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+              />
+            </div>
           </div>
         </div>
       </div>
