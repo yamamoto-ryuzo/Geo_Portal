@@ -159,7 +159,7 @@ function Inner() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           <iframe
             title="Re:Earth Frame"
-            src={activeTab === "reearth" ? reearthUrl : "about:blank"}
+            src={reearthUrl}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "reearth" ? "block" : "none" }}
@@ -169,7 +169,7 @@ function Inner() {
           />
           <iframe
             title="BOX Frame"
-            src={activeTab === "box" ? boxUrl : "about:blank"}
+            src={boxUrl}
             width="100%"
             height="100%"
             style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
