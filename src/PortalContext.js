@@ -6,6 +6,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const STORAGE_REEARTH = "portal:reearthUrl";
   const STORAGE_BOX = "portal:boxUrl";
 
+  function getReearthFromQuery() {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("EARTH") || params.get("earth") || "";
+  }
+
   // Initialize with provided defaults; read persisted values on client mount.
   const [reearthUrl, setReearthUrl] = useState(initialReearth || "");
   const [boxUrl, setBoxUrl] = useState(initialBox || "");
@@ -13,8 +19,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
     try {
-      const params = new URLSearchParams(window.location.search);
-      const earthFromQuery = params.get("EARTH") || params.get("earth");
+      const earthFromQuery = getReearthFromQuery();
       const storedRe = localStorage.getItem(STORAGE_REEARTH);
       const storedBox = localStorage.getItem(STORAGE_BOX);
 
@@ -69,7 +74,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   }
 
   function resetTo(initialVals = {}) {
-    const { reearth = initialReearth, box = initialBox } = initialVals;
+    const queryReearth = getReearthFromQuery();
+    const { reearth = queryReearth || initialReearth, box = initialBox } = initialVals;
     setPreviewReearth(reearth || "");
     setPreviewBox(box || "");
     setReearthUrl(reearth || "");

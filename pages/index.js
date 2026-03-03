@@ -224,7 +224,7 @@ function Inner() {
               >
                 開く
               </button>
-              <button onClick={() => { resetTo({ reearth: SERVICES[0].url, box: SERVICES[1].url }); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>初期化</button>
+              <button onClick={() => { resetTo(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>初期化</button>
             </div>
           </div>
         </div>
