@@ -17,6 +17,12 @@
 2. 「保存」ボタンで localStorage に永続化。
 3. 「初期化」でデフォルト値に戻す。
 
+## 起動時クエリによる初期値指定
+
+- 起動 URL に `EARTH` または `earth` クエリを付けると、`Re:Earth` の初期表示 URL として読み込みます。
+- 優先順位は **クエリ (`EARTH` / `earth`) > localStorage 保存値 > デフォルト値** です。
+- 例: `https://re-earth-portal.vercel.app/?EARTH=https%3A%2F%2Fomoya.visualizer.reearth.io%2F`
+
 実装ファイル:
 
 - [pages/index.js](pages/index.js#L1-L400) — UI（左パネル、右パネル、設定パネル）、iframe 表示制御
