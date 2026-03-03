@@ -13,9 +13,16 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
+      const earthFromQuery = params.get("EARTH") || params.get("earth");
       const storedRe = localStorage.getItem(STORAGE_REEARTH);
       const storedBox = localStorage.getItem(STORAGE_BOX);
-      if (storedRe) setReearthUrl(storedRe);
+
+      if (earthFromQuery) {
+        setReearthUrl(earthFromQuery);
+      } else if (storedRe) {
+        setReearthUrl(storedRe);
+      }
       if (storedBox) setBoxUrl(storedBox);
     } catch (e) {
       // ignore (localStorage not available)
