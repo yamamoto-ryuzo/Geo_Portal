@@ -255,8 +255,21 @@ function Inner() {
           {/* 設定パネル: Re:Earth と BOX の表示URLを設定 */}
           <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "block" : "none", overflow: "auto" }}>
             <h2>ポータル設定</h2>
+            
+            <div style={{ marginTop: '8px', paddingBottom: '16px', borderBottom: '1px solid #ddd', marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold", color: "#d97706" }}>1. 設定ファイルの保存場所（ローカルランチャー用）</label>
+              <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>※この設定はローカルPCとネット環境の連携の要となるパスです。</p>
+              <input
+                type="text"
+                value={previewLauncherDir}
+                onChange={(e) => setPreviewLauncherDir(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                placeholder="C:\qgis_launcher"
+              />
+            </div>
+
             <div style={{ marginTop: '8px' }}>
-              <label style={{ display: 'block', marginBottom: '6px' }}>1. Re:Earth 表示アドレス</label>
+              <label style={{ display: 'block', marginBottom: '6px' }}>2. Re:Earth 表示アドレス</label>
               <input
                 type="text"
                 value={previewReearth}
@@ -265,7 +278,7 @@ function Inner() {
               />
             </div>
             <div style={{ marginTop: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px' }}>2. BOX ウィジェット表示アドレス</label>
+              <label style={{ display: 'block', marginBottom: '6px' }}>3. BOX ウィジェット表示アドレス</label>
               <input
                 type="text"
                 value={previewBox}
@@ -306,16 +319,6 @@ function Inner() {
                 onChange={(e) => setPreviewQgisProjectPath(e.target.value)}
                 style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
                 placeholder="C:\Users\...\Desktop\project.qgs"
-              />
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>3. 設定ファイルの保存場所（ローカルランチャー用）</label>
-              <input
-                type="text"
-                value={previewLauncherDir}
-                onChange={(e) => setPreviewLauncherDir(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                placeholder="C:\qgis_launcher"
               />
             </div>
 
