@@ -7,6 +7,65 @@ const SERVICES = [
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
+function QgisLaunchButton() {
+  const [status, setStatus] = useState('idle');
+
+  const handleLaunch = async () => {
+    setStatus('checking');
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const response = await fetch('http://127.0.0.1:12345/launch/qgis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        setStatus('success');
+        setTimeout(() => setStatus('idle'), 3000);
+      } else {
+        throw new Error('Agent responded with an error');
+      }
+    } catch (error) {
+      setStatus('fallback');
+    }
+  };
+
+  return (
+    <div style={{ marginTop: "20px", padding: "15px", border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "white" }}>
+      <h3 style={{ fontSize: "1rem", margin: "0 0 10px 0" }}>ローカルQGIS連携</h3>
+      
+      {status === 'idle' || status === 'checking' ? (
+        <button 
+          onClick={handleLaunch} 
+          disabled={status === 'checking'}
+          style={{ width: "100%", padding: "10px", backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px", cursor: status === 'checking' ? "wait" : "pointer" }}
+        >
+          {status === 'checking' ? '通信確認中...' : 'QGISを起動する'}
+        </button>
+      ) : status === 'success' ? (
+        <p style={{ color: "green", fontSize: "0.9rem", margin: 0 }}>✓ QGISを起動しました。</p>
+      ) : (
+        <div>
+          <p style={{ color: "#d97706", fontSize: "0.8rem", margin: "0 0 10px 0" }}>
+            ⚠️ 自動起動できませんでした。（LGWAN環境の可能性があります）
+          </p>
+          <a 
+            href="/downloads/qgis_launcher.exe" 
+            download 
+            style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#10b981", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
+          >
+            直接起動用アプリをDL
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -70,6 +129,8 @@ function Inner() {
               ))}
               {/* (removed) 設定情報を開く button */}
             </div>
+
+            <QgisLaunchButton />
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
               {(() => {
