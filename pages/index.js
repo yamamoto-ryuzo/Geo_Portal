@@ -69,7 +69,11 @@ function QgisLaunchButton() {
 function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, applyPreview, save, resetTo, applyPreviewAndSave } = usePortal();
+  const { 
+    reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
+    previewQgisProfile, previewQgisProjectPath, setPreviewQgisProfile, setPreviewQgisProjectPath,
+    applyPreview, save, resetTo, applyPreviewAndSave 
+  } = usePortal();
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
@@ -268,16 +272,36 @@ function Inner() {
                 style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
               />
             </div>
+            <div style={{ marginTop: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px' }}>3. QGIS 起動プロファイル</label>
+              <input
+                type="text"
+                value={previewQgisProfile}
+                onChange={(e) => setPreviewQgisProfile(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                placeholder="default"
+              />
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px' }}>4. QGIS 起動時プロジェクトファイルパス</label>
+              <input
+                type="text"
+                value={previewQgisProjectPath}
+                onChange={(e) => setPreviewQgisProjectPath(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
+                placeholder="C:\Users\...\Desktop\project.qgs"
+              />
+            </div>
 
-            <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+            <div style={{ marginTop: '24px', display: 'flex', gap: '8px' }}>
               <button onClick={() => { applyPreview(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>プレビュー</button>
-              <button onClick={() => { if (applyPreviewAndSave()) { alert('保存しました'); } else { alert('保存に失敗しました'); } }} style={{ padding: '8px 12px', cursor: 'pointer' }}>保存</button>
+              <button onClick={async () => { const ok = await applyPreviewAndSave(); if (ok) { alert('保存しました'); } else { alert('設定の保存に失敗しました。ローカルランチャーが起動しているか確認してください。'); } }} style={{ padding: '8px 12px', cursor: 'pointer' }}>保存</button>
               <button
-                onClick={() => {
+                onClick={async () => {
                   // 保存して設定内容を新しいタブで開く（JSON 表示）
-                  const ok = applyPreviewAndSave ? applyPreviewAndSave() : false;
-                  if (!ok) { alert('保存に失敗しました'); return; }
-                  const payload = { reearth: previewReearth, box: previewBox };
+                  const ok = applyPreviewAndSave ? await applyPreviewAndSave() : false;
+                  if (!ok) { alert('設定の保存に失敗しました。'); return; }
+                  const payload = { reearth: previewReearth, box: previewBox, qgis_profile: previewQgisProfile, qgis_project: previewQgisProjectPath };
                   const url = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
                   window.open(url, '_blank');
                 }}

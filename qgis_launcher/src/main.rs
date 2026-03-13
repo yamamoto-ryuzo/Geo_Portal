@@ -1,12 +1,35 @@
-use axum::{routing::post, Router};
+use axum::{routing::{get, post}, Json, Router};
 use clap::Parser;
 use std::env;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use serde::{Deserialize, Serialize};
 use tower_http::cors::CorsLayer;
 use winreg::enums::*;
 use winreg::RegKey;
 use mslnk::ShellLink;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct QgisSettings {
+    pub profile: String,
+    pub project_path: String,
+}
+
+impl Default for QgisSettings {
+    fn default() -> Self {
+        Self {
+            profile: "default".to_string(),
+            project_path: "".to_string(),
+        }
+    }
+}
+
+fn get_settings_path() -> PathBuf {
+    let mut path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+    path.pop(); // Remove exe name
+    path.join("qgis_settings.json")
+}
 
 /// QGIS起動用ランチャー
 #[derive(Parser, Debug)]
@@ -42,14 +65,29 @@ async fn main() {
         let cors = CorsLayer::permissive();
         let app = Router::new()
             .route("/launch/qgis", post(handle_web_request))
+            .route("/settings", get(get_settings).post(save_settings))
             .layer(cors);
+
+        // Webブラウザでポータルを開く（オンラインURLを試し、ダメならローカルの index.html を開く）
+        // ここでは簡単にローカルのファイルを開くフォールバック動作を実装します
+        tokio::spawn(async {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            let mut portal_path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+            portal_path.pop();
+            portal_path.push("out"); // Next.jsのexport先
+            portal_path.push("index.html");
+            if portal_path.exists() {
+                // オフライン環境を想定し、ローカルのポータルを開く
+                let _ = Command::new("cmd").args(&["/C", "start", "", portal_path.to_str().unwrap()]).spawn();
+            }
+        });
 
         let listener = tokio::net::TcpListener::bind("127.0.0.1:12345").await.unwrap();
         axum::serve(listener, app).await.unwrap();
     } else {
         // --- B: LGWAN環境向け（直接起動モード） ---
         println!("直接起動モード: プロファイル '{}' でQGISを起動します...", args.profile);
-        launch_qgis(&args.profile);
+        launch_qgis(&args.profile, "");
     }
 }
 
@@ -116,7 +154,7 @@ fn find_qgis_path() -> Option<String> {
 }
 
 // QGISを環境変数を設定して起動する実処理
-fn launch_qgis(profile_name: &str) {
+fn launch_qgis(profile_name: &str, project_path: &str) {
     let qgis_path = match find_qgis_path() {
         Some(path) => path,
         None => {
@@ -127,12 +165,14 @@ fn launch_qgis(profile_name: &str) {
 
     println!("QGISを起動しています... パス: {}", qgis_path);
 
-    match Command::new(&qgis_path)
-        .arg("--profile")
-        .arg(profile_name)
-        // 必要に応じて環境変数も追加可能
-        // .env("QGIS_PREFIX_PATH", r"C:\CustomPath") 
-        .spawn()
+    let mut cmd = Command::new(&qgis_path);
+    cmd.arg("--profile").arg(profile_name);
+    
+    if !project_path.trim().is_empty() {
+        cmd.arg(project_path.trim());
+    }
+
+    match cmd.spawn()
     {
         Ok(_) => println!("QGISの起動リクエストに成功しました。"),
         Err(e) => eprintln!("QGISの起動に失敗しました: {}", e),
@@ -142,9 +182,31 @@ fn launch_qgis(profile_name: &str) {
 // Webポータルからのリクエストを受け取った時のハンドラ
 async fn handle_web_request() -> &'static str {
     println!("Webポータルからの起動リクエストを受信しました。");
-    // Webからのリクエスト時は、例えば "web_profile" 等を指定して起動
-    launch_qgis("web_profile");
+    // 設定ファイルから読み込む
+    let settings = get_current_settings();
+    launch_qgis(&settings.profile, &settings.project_path);
     "QGIS launched"
+}
+
+fn get_current_settings() -> QgisSettings {
+    let path = get_settings_path();
+    if let Ok(data) = fs::read_to_string(path) {
+        serde_json::from_str(&data).unwrap_or_else(|_| QgisSettings::default())
+    } else {
+        QgisSettings::default()
+    }
+}
+
+async fn get_settings() -> Json<QgisSettings> {
+    Json(get_current_settings())
+}
+
+async fn save_settings(Json(settings): Json<QgisSettings>) -> Json<QgisSettings> {
+    let path = get_settings_path();
+    if let Ok(data) = serde_json::to_string_pretty(&settings) {
+        let _ = fs::write(path, data);
+    }
+    Json(settings)
 }
 
 // 自身をスタートアップフォルダに登録する

@@ -15,6 +15,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   // Initialize with provided defaults; read persisted values on client mount.
   const [reearthUrl, setReearthUrl] = useState(initialReearth || "");
   const [boxUrl, setBoxUrl] = useState(initialBox || "");
+  const [qgisProfile, setQgisProfile] = useState("default");
+  const [qgisProjectPath, setQgisProjectPath] = useState("");
 
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
@@ -32,10 +34,29 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     } catch (e) {
       // ignore (localStorage not available)
     }
+
+    // Load QGIS settings from local launcher API
+    fetch("http://127.0.0.1:12345/settings")
+      .then(res => res.json())
+      .then(data => {
+        if (data.profile) {
+          setQgisProfile(data.profile);
+          setPreviewQgisProfile(data.profile);
+        }
+        if (data.project_path !== undefined) {
+          setQgisProjectPath(data.project_path);
+          setPreviewQgisProjectPath(data.project_path);
+        }
+      })
+      .catch(err => {
+        console.warn("Could not load QGIS settings from local launcher", err);
+      });
   }, []);
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
+  const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
+  const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(qgisProjectPath);
 
   useEffect(() => {
     setPreviewReearth(reearthUrl);
@@ -43,10 +64,18 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   useEffect(() => {
     setPreviewBox(boxUrl);
   }, [boxUrl]);
+  useEffect(() => {
+    setPreviewQgisProfile(qgisProfile);
+  }, [qgisProfile]);
+  useEffect(() => {
+    setPreviewQgisProjectPath(qgisProjectPath);
+  }, [qgisProjectPath]);
 
   function applyPreview() {
     setReearthUrl(previewReearth);
     setBoxUrl(previewBox);
+    setQgisProfile(previewQgisProfile);
+    setQgisProjectPath(previewQgisProjectPath);
   }
 
   function save() {
@@ -60,17 +89,33 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   }
 
   // Apply the preview values and persist them immediately.
-  function applyPreviewAndSave() {
+  async function applyPreviewAndSave() {
     try {
       // Persist preview values first to avoid async state timing issues
       localStorage.setItem(STORAGE_REEARTH, previewReearth || "");
       localStorage.setItem(STORAGE_BOX, previewBox || "");
     } catch (e) {
-      return false;
+      // ignore
     }
     setReearthUrl(previewReearth);
     setBoxUrl(previewBox);
-    return true;
+    setQgisProfile(previewQgisProfile);
+    setQgisProjectPath(previewQgisProjectPath);
+
+    try {
+      await fetch("http://127.0.0.1:12345/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: previewQgisProfile,
+          project_path: previewQgisProjectPath
+        })
+      });
+      return true;
+    } catch (e) {
+      console.warn("Could not save QGIS settings to local launcher", e);
+      return false;
+    }
   }
 
   function resetTo(initialVals = {}) {
@@ -78,8 +123,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     const { reearth = queryReearth || initialReearth, box = initialBox } = initialVals;
     setPreviewReearth(reearth || "");
     setPreviewBox(box || "");
+    setPreviewQgisProfile("default");
+    setPreviewQgisProjectPath("");
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
+    setQgisProfile("default");
+    setQgisProjectPath("");
     try {
       localStorage.removeItem(STORAGE_REEARTH);
       localStorage.removeItem(STORAGE_BOX);
@@ -91,13 +140,20 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       value={{
         reearthUrl,
         boxUrl,
+        qgisProfile,
+        qgisProjectPath,
         previewReearth,
         previewBox,
+        previewQgisProfile,
+        previewQgisProjectPath,
         setPreviewReearth,
         setPreviewBox,
+        setPreviewQgisProfile,
+        setPreviewQgisProjectPath,
         applyPreview,
         save,
         resetTo,
+        applyPreviewAndSave
       }}
     >
       {children}
