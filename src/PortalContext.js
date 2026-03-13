@@ -35,7 +35,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       // ignore (localStorage not available)
     }
 
-    // Load QGIS settings from local launcher API
+    // Load QGIS and Portal settings from local launcher API
     fetch("http://127.0.0.1:12345/settings")
       .then(res => res.json())
       .then(data => {
@@ -46,6 +46,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         if (data.project_path !== undefined) {
           setQgisProjectPath(data.project_path);
           setPreviewQgisProjectPath(data.project_path);
+        }
+        if (data.reearth_url) {
+          setReearthUrl(data.reearth_url);
+          setPreviewReearth(data.reearth_url);
+        }
+        if (data.box_url) {
+          setBoxUrl(data.box_url);
+          setPreviewBox(data.box_url);
         }
       })
       .catch(err => {
@@ -108,7 +116,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           profile: previewQgisProfile,
-          project_path: previewQgisProjectPath
+          project_path: previewQgisProjectPath,
+          reearth_url: previewReearth,
+          box_url: previewBox
         })
       });
       return true;

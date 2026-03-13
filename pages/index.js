@@ -324,7 +324,12 @@ function Inner() {
               <button
                 onClick={() => {
                   // 設定内容をJSONファイルとしてダウンロード（オフライン環境への持ち込み用）
-                  const payload = { profile: previewQgisProfile || "default", project_path: previewQgisProjectPath || "" };
+                  const payload = { 
+                    profile: previewQgisProfile || "default", 
+                    project_path: previewQgisProjectPath || "",
+                    reearth_url: previewReearth || "",
+                    box_url: previewBox || ""
+                  };
                   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
                   const downloadAnchorNode = document.createElement('a');
                   downloadAnchorNode.setAttribute("href",     dataStr);

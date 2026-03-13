@@ -14,6 +14,8 @@ use mslnk::ShellLink;
 pub struct QgisSettings {
     pub profile: String,
     pub project_path: String,
+    pub reearth_url: Option<String>,
+    pub box_url: Option<String>,
 }
 
 impl Default for QgisSettings {
@@ -21,11 +23,23 @@ impl Default for QgisSettings {
         Self {
             profile: "default".to_string(),
             project_path: "".to_string(),
+            reearth_url: None,
+            box_url: None,
         }
     }
 }
 
 fn get_settings_path() -> PathBuf {
+    // まずデフォルトの固定パス C:\qgis_launcher\qgis_settings.json を優先的に確認する
+    let default_dir = PathBuf::from(r"C:\qgis_launcher");
+    let fixed_path = default_dir.join("qgis_settings.json");
+    
+    // 固定パスにファイルが存在する、あるいはC:\qgis_launcherが存在する場合はここを使う
+    if fixed_path.exists() || default_dir.exists() {
+        return fixed_path;
+    }
+
+    // そうでなければ実行ファイルと同じディレクトリを使う（フォールバック）
     let mut path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
     path.pop(); // Remove exe name
     path.join("qgis_settings.json")
