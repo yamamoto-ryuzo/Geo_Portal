@@ -1,9 +1,12 @@
 use axum::{routing::post, Router};
 use clap::Parser;
+use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 use tower_http::cors::CorsLayer;
 use winreg::enums::*;
 use winreg::RegKey;
+use mslnk::ShellLink;
 
 /// QGIS起動用ランチャー
 #[derive(Parser, Debug)]
@@ -13,6 +16,10 @@ struct Args {
     #[arg(short, long)]
     server: bool,
 
+    /// スタートアップにサーバーモードで登録する
+    #[arg(long)]
+    register_startup: bool,
+
     /// （直接起動時）適用する環境設定プロファイル名
     #[arg(short, long, default_value = "default")]
     profile: String,
@@ -21,6 +28,11 @@ struct Args {
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
+
+    if args.register_startup {
+        register_startup_shortcut();
+        return;
+    }
 
     if args.server {
         // --- A: 一般環境向け（ローカルサーバーモード） ---
@@ -133,4 +145,63 @@ async fn handle_web_request() -> &'static str {
     // Webからのリクエスト時は、例えば "web_profile" 等を指定して起動
     launch_qgis("web_profile");
     "QGIS launched"
+}
+
+// 自身をスタートアップフォルダに登録する
+fn register_startup_shortcut() {
+    println!("スタートアップへの登録を開始します...");
+
+    // 現在の実行ファイルのパスを取得
+    let current_exe = match env::current_exe() {
+        Ok(path) => path,
+        Err(e) => {
+            eprintln!("実行ファイルのパス取得に失敗しました: {}", e);
+            return;
+        }
+    };
+
+    // スタートアップフォルダのパスを取得
+    let startup_dir = match get_startup_folder() {
+        Some(path) => path,
+        None => {
+            eprintln!("スタートアップフォルダのパスが取得できませんでした。");
+            return;
+        }
+    };
+
+    let shortcut_path = startup_dir.join("QGIS_Launcher.lnk");
+
+    // ショートカットを作成
+    let mut sl = match ShellLink::new(current_exe.to_str().unwrap()) {
+        Ok(link) => link,
+        Err(e) => {
+            eprintln!("ショートカットの初期化に失敗しました: {}", e);
+            return;
+        }
+    };
+    
+    // 引数として --server を設定
+    sl.set_arguments(Some("--server".to_string()));
+    
+    // 作業ディレクトリを設定（実行ファイルのあるディレクトリ）
+    if let Some(dir) = current_exe.parent() {
+        sl.set_working_dir(Some(dir.to_str().unwrap().to_string()));
+    }
+
+    match sl.create_lnk(&shortcut_path) {
+        Ok(_) => println!("スタートアップに登録しました: {:?}", shortcut_path),
+        Err(e) => eprintln!("ショートカットの作成に失敗しました: {}", e),
+    }
+}
+
+// Windowsのスタートアップフォルダのパスを取得する
+fn get_startup_folder() -> Option<PathBuf> {
+    if let Ok(appdata) = env::var("APPDATA") {
+        let mut path = PathBuf::from(appdata);
+        path.push(r"Microsoft\Windows\Start Menu\Programs\Startup");
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    None
 }
