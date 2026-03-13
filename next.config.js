@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: process.env.VERCEL ? undefined : 'export', // Vercel以外（ローカル等）でのみ静的エクスポートを有効化
+  output: 'export', // Vercelでもローカルでも常に静的エクスポート
 };
 
 module.exports = nextConfig;
