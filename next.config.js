@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', // 静的HTMLエクスポートを有効化（オフライン配布用）
+  output: process.env.VERCEL ? undefined : 'export', // Vercel以外（ローカル等）でのみ静的エクスポートを有効化
 };
 
 module.exports = nextConfig;
