@@ -2,7 +2,7 @@
 
 Webポータル連携機能（ローカルサーバー）と、直接起動（LGWAN向け）の両方を兼ね備えたRust製のQGIS起動アプリです。
 
-## 必要な環境
+## 必要な環境　
 - Rust / Cargo (インストールされていない場合は [rustup](https://rustup.rs/) を使用)
 
 ## ビルド方法
@@ -32,31 +32,16 @@ cargo build --release
 .\qgis_launcher.exe --profile "LGWAN_Profile"
 ```
 
-### 2. 一般環境・オフライン環境共通（ローカルサーバーモード）
+### 2. 一般環境向け（ローカルサーバーモード）
 
-Webポータルから起動要求や設定を受け付けるために、`--server` 引数を付けてバックグラウンドで起動しておきます。
+Webポータルから起動要求を受け付けるために、`--server` 引数を付けてバックグラウンドで起動しておきます。
 
 ```powershell
 .\qgis_launcher.exe --server
 ```
 
-**オフライン環境での利用について:**
-`--server` 起動時に、同じフォルダにある `out/index.html`（Next.jsのビルド成果物）を自動でブラウザで開きます。
-これにより、ネットから分断されたLGWAN環境などでも、モダンなWebポータルのUIからQGISの起動や設定変更が可能です。
-
-### 3. QGIS起動設定の変更（API）
-
-ローカルサーバー起動中は、以下のエンドポイントでQGISの起動プロファイルやプロジェクトファイルパスの設定を共有（取得・保存）できます。
-設定内容は `qgis_settings.json` に保存されます。
+この状態で、Webポータル（Next.js）から以下のようなJavaScriptを実行するとQGISが立ち上がります。
 
 ```javascript
-// QGISを起動する
 fetch('http://127.0.0.1:12345/launch/qgis', { method: 'POST' });
-
-// 設定を保存する
-fetch('http://127.0.0.1:12345/settings', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ profile: "my_profile", project_path: "C:\\path\\to\\project.qgs" })
-});
 ```
