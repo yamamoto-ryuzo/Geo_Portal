@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', // Vercelでもローカルでも常に静的エクスポート
+  // 常に動的サイトとしてVercelに任せるため output: export は指定しない
 };
 
 module.exports = nextConfig;
