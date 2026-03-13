@@ -2,6 +2,8 @@ use axum::{routing::post, Router};
 use clap::Parser;
 use std::process::Command;
 use tower_http::cors::CorsLayer;
+use winreg::enums::*;
+use winreg::RegKey;
 
 /// QGIS起動用ランチャー
 #[derive(Parser, Debug)]
@@ -39,14 +41,54 @@ async fn main() {
     }
 }
 
+// レジストリからQGISのパスを自動検索する
+fn find_qgis_path() -> String {
+    let default_path = r"C:\Program Files\QGIS 3.34.4\bin\qgis-bin.exe".to_string();
+
+    // HKEY_CLASSES_ROOT にアクセス
+    let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
+
+    // 1. .qgs の関連付け先 (ProgID) を取得
+    let prog_id = match hkcr.open_subkey(r".qgs") {
+        Ok(key) => match key.get_value::<String, _>("") {
+            Ok(val) => val,
+            Err(_) => return default_path,
+        },
+        Err(_) => return default_path,
+    };
+
+    // 2. ProgID から実行ファイルのパスを取得
+    let cmd_path = format!(r"{}\shell\open\command", prog_id);
+    let command_string = match hkcr.open_subkey(&cmd_path) {
+        Ok(key) => match key.get_value::<String, _>("") {
+            Ok(val) => val,
+            Err(_) => return default_path,
+        },
+        Err(_) => return default_path,
+    };
+
+    // 3. レジストリの値 (例: "C:\Program Files\QGIS\bin\qgis-bin.exe" "%1") からパス部分だけを抽出
+    // ダブルクォーテーションで囲まれている場合を考慮
+    let exe_path = if command_string.starts_with('"') {
+        command_string.split('"').nth(1).unwrap_or(&command_string)
+    } else {
+        command_string.split_whitespace().next().unwrap_or(&command_string)
+    };
+
+    if exe_path.is_empty() {
+        default_path
+    } else {
+        exe_path.to_string()
+    }
+}
+
 // QGISを環境変数を設定して起動する実処理
 fn launch_qgis(profile_name: &str) {
-    // FIXME: 実際のQGISのインストールパスに合わせて変更してください
-    let qgis_path = r"C:\Program Files\QGIS 3.34.4\bin\qgis-bin.exe"; 
+    let qgis_path = find_qgis_path(); 
 
     println!("QGISを起動しています... パス: {}", qgis_path);
 
-    match Command::new(qgis_path)
+    match Command::new(&qgis_path)
         .arg("--profile")
         .arg(profile_name)
         // 必要に応じて環境変数も追加可能
