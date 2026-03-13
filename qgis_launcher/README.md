@@ -17,7 +17,6 @@ cargo build --release
 成功すると、`qgis_launcher\target\release\qgis_launcher.exe` に実行ファイルが作成されます。
 この `.exe` ファイル単体で動作するため、LGWAN環境などにコピーして使用できます。
 
-*(注意: `src/main.rs` 内の `qgis_path` を、お使いの環境の実際のQGISインストールパスに書き換えてからビルドしてください)*
 
 ## 使い方
 
