@@ -42,29 +42,47 @@ async fn main() {
 }
 
 // レジストリからQGISのパスを自動検索する
-fn find_qgis_path() -> String {
-    let default_path = r"C:\Program Files\QGIS 3.34.4\bin\qgis-bin.exe".to_string();
-
+fn find_qgis_path() -> Option<String> {
+    println!("レジストリからQGISのパスを検索中...");
+    
     // HKEY_CLASSES_ROOT にアクセス
     let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
 
     // 1. .qgs の関連付け先 (ProgID) を取得
     let prog_id = match hkcr.open_subkey(r".qgs") {
         Ok(key) => match key.get_value::<String, _>("") {
-            Ok(val) => val,
-            Err(_) => return default_path,
+            Ok(val) => {
+                println!("成功: .qgs のProgIDが見つかりました -> {}", val);
+                val
+            },
+            Err(e) => {
+                println!("失敗: .qgs キーの既定値が取得できませんでした -> {}", e);
+                return None;
+            }
         },
-        Err(_) => return default_path,
+        Err(e) => {
+            println!("失敗: .qgs キーがレジストリ(HKEY_CLASSES_ROOT)に見つかりませんでした -> {}", e);
+            return None;
+        }
     };
 
     // 2. ProgID から実行ファイルのパスを取得
     let cmd_path = format!(r"{}\shell\open\command", prog_id);
     let command_string = match hkcr.open_subkey(&cmd_path) {
         Ok(key) => match key.get_value::<String, _>("") {
-            Ok(val) => val,
-            Err(_) => return default_path,
+            Ok(val) => {
+                println!("成功: 起動コマンドが見つかりました -> {}", val);
+                val
+            },
+            Err(e) => {
+                println!("失敗: {} の既定値が取得できませんでした -> {}", cmd_path, e);
+                return None;
+            }
         },
-        Err(_) => return default_path,
+        Err(e) => {
+            println!("失敗: {} キーがレジストリに見つかりませんでした -> {}", cmd_path, e);
+            return None;
+        }
     };
 
     // 3. レジストリの値 (例: "C:\Program Files\QGIS\bin\qgis-bin.exe" "%1") からパス部分だけを抽出
@@ -75,16 +93,25 @@ fn find_qgis_path() -> String {
         command_string.split_whitespace().next().unwrap_or(&command_string)
     };
 
+    println!("抽出されたQGIS実行ファイルパス: {}", exe_path);
+
     if exe_path.is_empty() {
-        default_path
+        println!("失敗: 実行ファイルパスが空でした。");
+        None
     } else {
-        exe_path.to_string()
+        Some(exe_path.to_string())
     }
 }
 
 // QGISを環境変数を設定して起動する実処理
 fn launch_qgis(profile_name: &str) {
-    let qgis_path = find_qgis_path(); 
+    let qgis_path = match find_qgis_path() {
+        Some(path) => path,
+        None => {
+            eprintln!("エラー: QGISのインストールパスをレジストリ(.qgsの関連付け)から見つけることができませんでした。QGISが正しくインストールされているか確認してください。");
+            return;
+        }
+    };
 
     println!("QGISを起動しています... パス: {}", qgis_path);
 
