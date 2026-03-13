@@ -78,11 +78,11 @@ function Inner() {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
     box: { id: "box", label: "BOX", src: SERVICES[1].url },
-    settings: { id: "settings", label: "ポータル設定" },
-    qgis_settings: { id: "qgis_settings", label: "QGIS設定" }
+    settings: { id: "settings", label: "ポータル設定" }
   };
-  const [tabs, setTabs] = useState(["reearth","googlemap","box","settings","qgis_settings"]);
+  const [tabs, setTabs] = useState(["reearth","googlemap","box","settings"]);
   const [activeTab, setActiveTab] = useState("reearth");
+  const [activeSettingsTab, setActiveSettingsTab] = useState("common");
 
   return (
     <div style={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -252,91 +252,135 @@ function Inner() {
             allowFullScreen=""
             loading="lazy"
           />
-          {/* 設定パネル: Re:Earth と BOX の表示URLを設定 */}
-          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "block" : "none", overflow: "auto" }}>
-            <h2>ポータル設定</h2>
+
+          {/* 統合設定パネル */}
+          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "flex" : "none", flexDirection: "column", overflow: "hidden" }}>
+            <h2 style={{ margin: "0 0 20px 0" }}>ポータル設定</h2>
             
-            <div style={{ marginTop: '8px', paddingBottom: '16px', borderBottom: '1px solid #ddd', marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold", color: "#d97706" }}>1. 設定ファイルの保存場所（ローカルランチャー用）</label>
-              <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>※この設定はローカルPCとネット環境の連携の要となるパスです。</p>
-              <input
-                type="text"
-                value={previewLauncherDir}
-                onChange={(e) => setPreviewLauncherDir(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                placeholder="C:\qgis_launcher"
-              />
+            {/* サブタブナビゲーション */}
+            <div style={{ display: "flex", borderBottom: "2px solid #ddd", marginBottom: "20px" }}>
+              {[
+                { id: "common", label: "共通設定" },
+                { id: "reearth", label: "Re:Earth" },
+                { id: "box", label: "BOX" },
+                { id: "qgis", label: "QGIS" }
+              ].map(subTab => (
+                <button
+                  key={subTab.id}
+                  onClick={() => setActiveSettingsTab(subTab.id)}
+                  style={{
+                    padding: "10px 20px",
+                    border: "none",
+                    backgroundColor: "transparent",
+                    borderBottom: activeSettingsTab === subTab.id ? "3px solid #0070f3" : "3px solid transparent",
+                    cursor: "pointer",
+                    fontWeight: activeSettingsTab === subTab.id ? "bold" : "normal",
+                    color: activeSettingsTab === subTab.id ? "#0070f3" : "#555",
+                    marginBottom: "-2px"
+                  }}
+                >
+                  {subTab.label}
+                </button>
+              ))}
             </div>
 
-            <div style={{ marginTop: '8px' }}>
-              <label style={{ display: 'block', marginBottom: '6px' }}>2. Re:Earth 表示アドレス</label>
-              <input
-                type="text"
-                value={previewReearth}
-                onChange={(e) => setPreviewReearth(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px' }}>3. BOX ウィジェット表示アドレス</label>
-              <input
-                type="text"
-                value={previewBox}
-                onChange={(e) => setPreviewBox(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-              />
+            {/* サブタブコンテンツ領域 */}
+            <div style={{ flex: 1, overflow: "auto", paddingRight: "10px" }}>
+              
+              {/* 共通設定 */}
+              <div style={{ display: activeSettingsTab === "common" ? "block" : "none" }}>
+                <h3 style={{ marginTop: 0 }}>システム共通</h3>
+                <div style={{ paddingBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold", color: "#d97706" }}>
+                    ローカル連携用 設定ファイル保存場所 (settings_dir)
+                  </label>
+                  <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
+                    ※ネット環境とローカルPC（LGWAN等）の連携の要となるパスです。デフォルトは <code>C:\qgis_launcher</code> です。
+                  </p>
+                  <input
+                    type="text"
+                    value={previewLauncherDir}
+                    onChange={(e) => setPreviewLauncherDir(e.target.value)}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                    placeholder="C:\qgis_launcher"
+                  />
+                </div>
+              </div>
+
+              {/* Re:Earth設定 */}
+              <div style={{ display: activeSettingsTab === "reearth" ? "block" : "none" }}>
+                <h3 style={{ marginTop: 0 }}>Re:Earth 設定</h3>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>表示アドレス (URL)</label>
+                  <input
+                    type="text"
+                    value={previewReearth}
+                    onChange={(e) => setPreviewReearth(e.target.value)}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                  />
+                </div>
+              </div>
+
+              {/* BOX設定 */}
+              <div style={{ display: activeSettingsTab === "box" ? "block" : "none" }}>
+                <h3 style={{ marginTop: 0 }}>BOX 設定</h3>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>ウィジェット表示アドレス (URL)</label>
+                  <input
+                    type="text"
+                    value={previewBox}
+                    onChange={(e) => setPreviewBox(e.target.value)}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                  />
+                </div>
+              </div>
+
+              {/* QGIS設定 */}
+              <div style={{ display: activeSettingsTab === "qgis" ? "block" : "none" }}>
+                <h3 style={{ marginTop: 0 }}>ローカルQGIS 起動設定</h3>
+                <p style={{ fontSize: "0.9rem", color: "#555", marginBottom: "20px" }}>
+                  ランチャー（qgis_launcher.exe）経由でローカルのQGISを起動する際の動作を指定します。
+                </p>
+                
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動プロファイル名</label>
+                  <input
+                    type="text"
+                    value={previewQgisProfile}
+                    onChange={(e) => setPreviewQgisProfile(e.target.value)}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                    placeholder="default"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイルパス (.qgs / .qgz)</label>
+                  <input
+                    type="text"
+                    value={previewQgisProjectPath}
+                    onChange={(e) => setPreviewQgisProjectPath(e.target.value)}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                    placeholder="C:\Users\...\Desktop\project.qgs"
+                  />
+                </div>
+              </div>
+
             </div>
 
-            <div style={{ marginTop: '24px', display: 'flex', gap: '8px' }}>
-              <button onClick={() => { applyPreview(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>プレビュー</button>
-              <button onClick={async () => { const ok = await applyPreviewAndSave(); if (ok) { alert('保存しました'); } else { alert('設定の保存に失敗しました。'); } }} style={{ padding: '8px 12px', cursor: 'pointer' }}>保存</button>
-              <button onClick={() => { resetTo(); }} style={{ padding: '8px 12px', cursor: 'pointer' }}>初期化</button>
-            </div>
-          </div>
-
-          {/* QGIS設定パネル */}
-          <div style={{ flex: 1, padding: "20px", display: activeTab === "qgis_settings" ? "block" : "none", overflow: "auto", backgroundColor: "#f0f8ff" }}>
-            <h2>ローカルQGIS 起動設定</h2>
-            <p style={{ fontSize: "0.9rem", color: "#555", marginBottom: "20px" }}>
-              この設定は、ランチャー（qgis_launcher.exe）を経由してローカルのQGISを起動する際の動作を指定します。
-            </p>
-            
-            <div style={{ marginTop: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>1. 起動プロファイル名</label>
-              <input
-                type="text"
-                value={previewQgisProfile}
-                onChange={(e) => setPreviewQgisProfile(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                placeholder="default"
-              />
-            </div>
-            <div style={{ marginTop: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>2. 起動時プロジェクトファイルパス (.qgs / .qgz)</label>
-              <input
-                type="text"
-                value={previewQgisProjectPath}
-                onChange={(e) => setPreviewQgisProjectPath(e.target.value)}
-                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                placeholder="C:\Users\...\Desktop\project.qgs"
-              />
-            </div>
-
-            <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: "wrap" }}>
+            {/* 共通フッター・操作ボタンエリア */}
+            <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #ddd', display: 'flex', gap: '12px', flexWrap: "wrap", backgroundColor: "#fff" }}>
               <button 
                 onClick={async () => { 
                   const ok = await applyPreviewAndSave(); 
-                  if (ok) { alert('ランチャーに設定を保存しました。'); } 
-                  else { alert('保存に失敗しました。ローカルランチャーが起動していない可能性があります。'); } 
+                  if (ok) { alert('設定を保存しました。'); } 
+                  else { alert('ブラウザには保存されましたが、ローカルランチャーとの通信に失敗しました。'); } 
                 }} 
-                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px" }}
+                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
               >
-                ローカルランチャーに保存
+                ✓ 設定を保存
               </button>
               
               <button
                 onClick={() => {
-                  // 設定内容をJSONファイルとしてダウンロード（オフライン環境への持ち込み用）
                   const payload = { 
                     profile: previewQgisProfile || "default", 
                     project_path: previewQgisProjectPath || "",
@@ -352,15 +396,22 @@ function Inner() {
                   downloadAnchorNode.click();
                   downloadAnchorNode.remove();
                 }}
-                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "4px" }}
+                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
                 title="オンラインで作成した設定を qgis_settings.json としてダウンロードし、オフライン環境のexeと同じフォルダに配置できます。"
               >
                 📥 設定ファイル (JSON) をダウンロード
               </button>
 
               <button 
+                onClick={() => { applyPreview(); }} 
+                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px" }}
+              >
+                プレビュー適用
+              </button>
+
+              <button 
                 onClick={() => { resetTo(); }} 
-                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#e5e7eb", border: "none", borderRadius: "4px" }}
+                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#fee2e2", color: "#b91c1c", border: "none", borderRadius: "4px", marginLeft: "auto" }}
               >
                 リセット
               </button>
