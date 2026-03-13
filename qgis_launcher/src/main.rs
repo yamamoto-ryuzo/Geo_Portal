@@ -1,4 +1,4 @@
-use axum::{routing::{get, post}, Json, Router};
+use axum::{extract::State, routing::{get, post}, Json, Router};
 use clap::Parser;
 use std::env;
 use std::fs;
@@ -29,17 +29,22 @@ impl Default for QgisSettings {
     }
 }
 
-fn get_settings_path() -> PathBuf {
-    // まずデフォルトの固定パス C:\qgis_launcher\qgis_settings.json を優先的に確認する
-    let default_dir = PathBuf::from(r"C:\qgis_launcher");
-    let fixed_path = default_dir.join("qgis_settings.json");
+#[derive(Clone)]
+struct AppState {
+    settings_dir: String,
+}
+
+fn get_settings_path(custom_dir: &str) -> PathBuf {
+    // ユーザーが指定した（またはデフォルトの）ディレクトリ
+    let target_dir = PathBuf::from(custom_dir);
+    let target_path = target_dir.join("qgis_settings.json");
     
-    // 固定パスにファイルが存在する、あるいはC:\qgis_launcherが存在する場合はここを使う
-    if fixed_path.exists() || default_dir.exists() {
-        return fixed_path;
+    // 指定ディレクトリが存在する場合はそこを使う
+    if target_dir.exists() {
+        return target_path;
     }
 
-    // そうでなければ実行ファイルと同じディレクトリを使う（フォールバック）
+    // 存在しない場合は、フォールバックとして実行ファイルと同じディレクトリを使う
     let mut path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
     path.pop(); // Remove exe name
     path.join("qgis_settings.json")
@@ -60,6 +65,10 @@ struct Args {
     /// （直接起動時）適用する環境設定プロファイル名
     #[arg(short, long, default_value = "default")]
     profile: String,
+
+    /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス
+    #[arg(long, default_value = r"C:\qgis_launcher")]
+    settings_dir: String,
 }
 
 #[tokio::main]
@@ -74,13 +83,19 @@ async fn main() {
     if args.server {
         // --- A: 一般環境向け（ローカルサーバーモード） ---
         println!("サーバーモードで起動します。Webポータルからのリクエストを待機中 (ポート: 12345)...");
+        println!("設定ディレクトリ: {}", args.settings_dir);
+
+        let state = AppState {
+            settings_dir: args.settings_dir.clone(),
+        };
 
         // CORS設定（Next.jsからのリクエストを許可）
         let cors = CorsLayer::permissive();
         let app = Router::new()
             .route("/launch/qgis", post(handle_web_request))
             .route("/settings", get(get_settings).post(save_settings))
-            .layer(cors);
+            .layer(cors)
+            .with_state(state);
 
         // Webブラウザでポータルを開く（オンラインURLを試し、ダメならローカルの index.html を開く）
         // ここでは簡単にローカルのファイルを開くフォールバック動作を実装します
@@ -194,16 +209,16 @@ fn launch_qgis(profile_name: &str, project_path: &str) {
 }
 
 // Webポータルからのリクエストを受け取った時のハンドラ
-async fn handle_web_request() -> &'static str {
+async fn handle_web_request(State(state): State<AppState>) -> &'static str {
     println!("Webポータルからの起動リクエストを受信しました。");
     // 設定ファイルから読み込む
-    let settings = get_current_settings();
+    let settings = get_current_settings(&state.settings_dir);
     launch_qgis(&settings.profile, &settings.project_path);
     "QGIS launched"
 }
 
-fn get_current_settings() -> QgisSettings {
-    let path = get_settings_path();
+fn get_current_settings(custom_dir: &str) -> QgisSettings {
+    let path = get_settings_path(custom_dir);
     if let Ok(data) = fs::read_to_string(path) {
         serde_json::from_str(&data).unwrap_or_else(|_| QgisSettings::default())
     } else {
@@ -211,12 +226,12 @@ fn get_current_settings() -> QgisSettings {
     }
 }
 
-async fn get_settings() -> Json<QgisSettings> {
-    Json(get_current_settings())
+async fn get_settings(State(state): State<AppState>) -> Json<QgisSettings> {
+    Json(get_current_settings(&state.settings_dir))
 }
 
-async fn save_settings(Json(settings): Json<QgisSettings>) -> Json<QgisSettings> {
-    let path = get_settings_path();
+async fn save_settings(State(state): State<AppState>, Json(settings): Json<QgisSettings>) -> Json<QgisSettings> {
+    let path = get_settings_path(&state.settings_dir);
     if let Ok(data) = serde_json::to_string_pretty(&settings) {
         let _ = fs::write(path, data);
     }
