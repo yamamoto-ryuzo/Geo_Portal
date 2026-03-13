@@ -17,6 +17,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const [boxUrl, setBoxUrl] = useState(initialBox || "");
   const [qgisProfile, setQgisProfile] = useState("default");
   const [qgisProjectPath, setQgisProjectPath] = useState("");
+  const [launcherDir, setLauncherDir] = useState("C:\\qgis_launcher");
 
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
@@ -55,6 +56,10 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           setBoxUrl(data.box_url);
           setPreviewBox(data.box_url);
         }
+        if (data.settings_dir) {
+          setLauncherDir(data.settings_dir);
+          setPreviewLauncherDir(data.settings_dir);
+        }
       })
       .catch(err => {
         console.warn("Could not load QGIS settings from local launcher", err);
@@ -65,6 +70,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const [previewBox, setPreviewBox] = useState(boxUrl);
   const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(qgisProjectPath);
+  const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
 
   useEffect(() => {
     setPreviewReearth(reearthUrl);
@@ -78,12 +84,16 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   useEffect(() => {
     setPreviewQgisProjectPath(qgisProjectPath);
   }, [qgisProjectPath]);
+  useEffect(() => {
+    setPreviewLauncherDir(launcherDir);
+  }, [launcherDir]);
 
   function applyPreview() {
     setReearthUrl(previewReearth);
     setBoxUrl(previewBox);
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
+    setLauncherDir(previewLauncherDir);
   }
 
   function save() {
@@ -109,6 +119,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setBoxUrl(previewBox);
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
+    setLauncherDir(previewLauncherDir);
 
     try {
       await fetch("http://127.0.0.1:12345/settings", {
@@ -118,7 +129,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           profile: previewQgisProfile,
           project_path: previewQgisProjectPath,
           reearth_url: previewReearth,
-          box_url: previewBox
+          box_url: previewBox,
+          settings_dir: previewLauncherDir
         })
       });
       return true;
@@ -135,10 +147,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewBox(box || "");
     setPreviewQgisProfile("default");
     setPreviewQgisProjectPath("");
+    setPreviewLauncherDir("C:\\qgis_launcher");
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
     setQgisProfile("default");
     setQgisProjectPath("");
+    setLauncherDir("C:\\qgis_launcher");
     try {
       localStorage.removeItem(STORAGE_REEARTH);
       localStorage.removeItem(STORAGE_BOX);
@@ -152,14 +166,17 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         boxUrl,
         qgisProfile,
         qgisProjectPath,
+        launcherDir,
         previewReearth,
         previewBox,
         previewQgisProfile,
         previewQgisProjectPath,
+        previewLauncherDir,
         setPreviewReearth,
         setPreviewBox,
         setPreviewQgisProfile,
         setPreviewQgisProjectPath,
+        setPreviewLauncherDir,
         applyPreview,
         save,
         resetTo,

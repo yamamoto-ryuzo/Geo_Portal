@@ -4,6 +4,7 @@ use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use tower_http::cors::CorsLayer;
 use winreg::enums::*;
@@ -16,6 +17,7 @@ pub struct QgisSettings {
     pub project_path: String,
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
+    pub settings_dir: Option<String>,
 }
 
 impl Default for QgisSettings {
@@ -25,13 +27,14 @@ impl Default for QgisSettings {
             project_path: "".to_string(),
             reearth_url: None,
             box_url: None,
+            settings_dir: Some(r"C:\qgis_launcher".to_string()),
         }
     }
 }
 
 #[derive(Clone)]
 struct AppState {
-    settings_dir: String,
+    settings_dir: Arc<Mutex<String>>,
 }
 
 fn get_settings_path(custom_dir: &str) -> PathBuf {
@@ -83,10 +86,10 @@ async fn main() {
     if args.server {
         // --- A: 一般環境向け（ローカルサーバーモード） ---
         println!("サーバーモードで起動します。Webポータルからのリクエストを待機中 (ポート: 12345)...");
-        println!("設定ディレクトリ: {}", args.settings_dir);
+        println!("初期設定ディレクトリ: {}", args.settings_dir);
 
         let state = AppState {
-            settings_dir: args.settings_dir.clone(),
+            settings_dir: Arc::new(Mutex::new(args.settings_dir.clone())),
         };
 
         // CORS設定（Next.jsからのリクエストを許可）
@@ -212,7 +215,8 @@ fn launch_qgis(profile_name: &str, project_path: &str) {
 async fn handle_web_request(State(state): State<AppState>) -> &'static str {
     println!("Webポータルからの起動リクエストを受信しました。");
     // 設定ファイルから読み込む
-    let settings = get_current_settings(&state.settings_dir);
+    let dir = state.settings_dir.lock().unwrap().clone();
+    let settings = get_current_settings(&dir);
     launch_qgis(&settings.profile, &settings.project_path);
     "QGIS launched"
 }
@@ -227,11 +231,28 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
 }
 
 async fn get_settings(State(state): State<AppState>) -> Json<QgisSettings> {
-    Json(get_current_settings(&state.settings_dir))
+    let dir = state.settings_dir.lock().unwrap().clone();
+    let mut settings = get_current_settings(&dir);
+    settings.settings_dir = Some(dir);
+    Json(settings)
 }
 
-async fn save_settings(State(state): State<AppState>, Json(settings): Json<QgisSettings>) -> Json<QgisSettings> {
-    let path = get_settings_path(&state.settings_dir);
+async fn save_settings(State(state): State<AppState>, Json(mut settings): Json<QgisSettings>) -> Json<QgisSettings> {
+    let new_dir = settings.settings_dir.clone().unwrap_or_else(|| r"C:\qgis_launcher".to_string());
+    
+    // 状態を更新
+    {
+        let mut dir = state.settings_dir.lock().unwrap();
+        *dir = new_dir.clone();
+    }
+
+    let path = get_settings_path(&new_dir);
+    
+    // ディレクトリが存在しない場合は作成する
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
     if let Ok(data) = serde_json::to_string_pretty(&settings) {
         let _ = fs::write(path, data);
     }

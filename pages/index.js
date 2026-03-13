@@ -71,7 +71,7 @@ function Inner() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
     reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
-    previewQgisProfile, previewQgisProjectPath, setPreviewQgisProfile, setPreviewQgisProjectPath,
+    previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave 
   } = usePortal();
   const TAB_DEFS = {
@@ -308,6 +308,16 @@ function Inner() {
                 placeholder="C:\Users\...\Desktop\project.qgs"
               />
             </div>
+            <div style={{ marginTop: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>3. 設定ファイルの保存場所（ローカルランチャー用）</label>
+              <input
+                type="text"
+                value={previewLauncherDir}
+                onChange={(e) => setPreviewLauncherDir(e.target.value)}
+                style={{ width: '100%', padding: '8px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                placeholder="C:\qgis_launcher"
+              />
+            </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px', flexWrap: "wrap" }}>
               <button 
@@ -328,7 +338,8 @@ function Inner() {
                     profile: previewQgisProfile || "default", 
                     project_path: previewQgisProjectPath || "",
                     reearth_url: previewReearth || "",
-                    box_url: previewBox || ""
+                    box_url: previewBox || "",
+                    settings_dir: previewLauncherDir || "C:\\qgis_launcher"
                   };
                   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
                   const downloadAnchorNode = document.createElement('a');
