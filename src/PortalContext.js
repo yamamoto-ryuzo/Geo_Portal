@@ -136,6 +136,16 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   // Load settings from the specified directory via the local launcher API
   async function loadSettingsFromDir(dirPath) {
     try {
+      // 正規化: ユーザがファイルパス（.../qgis_settings.json）を入力している場合は親ディレクトリに変換
+      if (typeof dirPath === "string") {
+        const lower = dirPath.toLowerCase();
+        if (lower.endsWith("qgis_settings.json")) {
+          const idx = Math.max(dirPath.lastIndexOf("\\"), dirPath.lastIndexOf("/"));
+          if (idx !== -1) {
+            dirPath = dirPath.substring(0, idx);
+          }
+        }
+      }
       // 一旦、対象ディレクトリをセットして保存するようなリクエストを送るか、
       // 既存の GET /settings エンドポイントが `dirPath` を受け取らないため、
       // 今回は一時的に POST /settings で新しい settings_dir だけを投げて
@@ -207,6 +217,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setLauncherDir(previewLauncherDir);
 
     try {
+      // 送信前に settings_dir の正規化（ファイルパスが入っていたらフォルダへ）
+      let sendDir = previewLauncherDir;
+      if (typeof sendDir === "string") {
+        const lower = sendDir.toLowerCase();
+        if (lower.endsWith("qgis_settings.json")) {
+          const idx = Math.max(sendDir.lastIndexOf("\\"), sendDir.lastIndexOf("/"));
+          if (idx !== -1) sendDir = sendDir.substring(0, idx);
+        }
+      }
       await fetch("http://127.0.0.1:12345/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -215,7 +234,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           project_path: previewQgisProjectPath,
           reearth_url: previewReearth,
           box_url: previewBox,
-          settings_dir: previewLauncherDir
+          settings_dir: sendDir
         })
       });
       return true;
