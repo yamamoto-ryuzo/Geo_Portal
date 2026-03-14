@@ -44,35 +44,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     } catch (e) {
       // ignore (localStorage not available)
     }
-
-    // Load QGIS and Portal settings from local launcher API
-    fetch("http://127.0.0.1:12345/settings")
-      .then(res => res.json())
-      .then(data => {
-        if (data.profile) {
-          setQgisProfile(data.profile);
-        }
-        if (data.project_path !== undefined) {
-          setQgisProjectPath(data.project_path);
-          // From launcher initial GET - normalize for UI so it shows 'ProjectFile.qgs' when appropriate
-          setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
-        }
-        if (data.reearth_url) {
-          setReearthUrl(data.reearth_url);
-          setPreviewReearth(data.reearth_url);
-        }
-        if (data.box_url) {
-          setBoxUrl(data.box_url);
-          setPreviewBox(data.box_url);
-        }
-        if (data.settings_dir) {
-          setLauncherDir(data.settings_dir);
-          setPreviewLauncherDir(data.settings_dir);
-        }
-      })
-      .catch(err => {
-        console.warn("Could not load QGIS settings from local launcher", err);
-      });
+    // Note: local launcher HTTP integration removed. Do not attempt to contact 127.0.0.1.
   }, []);
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
@@ -151,60 +123,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   // Load settings from the specified directory via the local launcher API
   async function loadSettingsFromDir(dirPath) {
-    try {
-      // 正規化: ユーザがファイルパス（.../qgis_settings.json）を入力している場合は親ディレクトリに変換
-      if (typeof dirPath === "string") {
-        const lower = dirPath.toLowerCase();
-        if (lower.endsWith("qgis_settings.json")) {
-          const idx = Math.max(dirPath.lastIndexOf("\\"), dirPath.lastIndexOf("/"));
-          if (idx !== -1) {
-            dirPath = dirPath.substring(0, idx);
-          }
-        }
-      }
-      const res = await fetch("http://127.0.0.1:12345/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile: previewQgisProfile,
-          project_path: previewQgisProjectPath,
-          reearth_url: previewReearth,
-          box_url: previewBox,
-          settings_dir: dirPath
-        })
-      });
-      const data = await res.json();
-
-      if (data.profile) {
-        setQgisProfile(data.profile);
-        setPreviewQgisProfile(data.profile);
-      }
-      if (data.project_path !== undefined) {
-        setQgisProjectPath(data.project_path);
-        // When loading settings from a specific directory, reflect actual path
-        setPreviewQgisProjectPath(data.project_path);
-      }
-      if (data.reearth_url) {
-        setReearthUrl(data.reearth_url);
-        setPreviewReearth(data.reearth_url);
-      }
-      if (data.box_url) {
-        setBoxUrl(data.box_url);
-        setPreviewBox(data.box_url);
-      }
-      if (data.settings_dir) {
-        setLauncherDir(data.settings_dir);
-        setPreviewLauncherDir(data.settings_dir);
-      }
-      // Immediately apply loaded values to the active state so UI reflects them
-      try {
-        applyPreview();
-      } catch (e) {}
-      return true;
-    } catch (e) {
-      console.warn("Could not load QGIS settings from specific directory", e);
-      return false;
-    }
+    // Local launcher integration removed. This operation is no-op in browser context.
+    console.warn("loadSettingsFromDir: local launcher integration removed; no action taken");
+    return false;
   }
 
   function save() {
@@ -231,33 +152,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
     setLauncherDir(previewLauncherDir);
-
-    try {
-      // 送信前に settings_dir の正規化（ファイルパスが入っていたらフォルダへ）
-      let sendDir = previewLauncherDir;
-      if (typeof sendDir === "string") {
-        const lower = sendDir.toLowerCase();
-        if (lower.endsWith("qgis_settings.json")) {
-          const idx = Math.max(sendDir.lastIndexOf("\\"), sendDir.lastIndexOf("/"));
-          if (idx !== -1) sendDir = sendDir.substring(0, idx);
-        }
-      }
-      await fetch("http://127.0.0.1:12345/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          profile: previewQgisProfile,
-          project_path: previewQgisProjectPath,
-          reearth_url: previewReearth,
-          box_url: previewBox,
-          settings_dir: sendDir
-        })
-      });
-      return true;
-    } catch (e) {
-      console.warn("Could not save QGIS settings to local launcher", e);
-      return false;
-    }
+    // Local launcher integration removed; do not POST to 127.0.0.1. Persisted to localStorage only.
+    return true;
   }
 
   // Save current preview/settings to a local file using File System Access API

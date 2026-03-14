@@ -11,27 +11,8 @@ function QgisLaunchButton() {
   const [status, setStatus] = useState('idle');
 
   const handleLaunch = async () => {
-    setStatus('checking');
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-
-      const response = await fetch('http://127.0.0.1:12345/launch/qgis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        setStatus('success');
-        setTimeout(() => setStatus('idle'), 3000);
-      } else {
-        throw new Error('Agent responded with an error');
-      }
-    } catch (error) {
-      setStatus('fallback');
-    }
+    // Local launcher integration removed — show fallback (download) path.
+    setStatus('fallback');
   };
 
   return (
