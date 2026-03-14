@@ -391,9 +391,24 @@ function Inner() {
                   }}
                 />
                 <button
-                  onClick={() => document.getElementById("settings-upload").click()}
+                  onClick={async () => {
+                    // まず settings_dir から読み込めるか試す（ランチャー経由）
+                    try {
+                      const dir = previewLauncherDir || "C:\\qgis_launcher";
+                      const ok = await loadSettingsFromDir(dir);
+                      if (ok) {
+                        alert("指定フォルダから設定を読み込みました。");
+                        return;
+                      }
+                    } catch (e) {
+                      // ignore and fallback to file picker
+                    }
+
+                    // フォールバック: ユーザーにファイルを選んでもらう
+                    document.getElementById("settings-upload").click();
+                  }}
                   style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。"
+                  title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。まず設定フォルダから読み込みを試みます。"
                 >
                   📂 設定ファイルを読み込む
                 </button>
