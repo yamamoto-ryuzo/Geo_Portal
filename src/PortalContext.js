@@ -96,6 +96,43 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setLauncherDir(previewLauncherDir);
   }
 
+  // File upload handler
+  function loadSettingsFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.profile) {
+            setQgisProfile(data.profile);
+            setPreviewQgisProfile(data.profile);
+          }
+          if (data.project_path !== undefined) {
+            setQgisProjectPath(data.project_path);
+            setPreviewQgisProjectPath(data.project_path);
+          }
+          if (data.reearth_url) {
+            setReearthUrl(data.reearth_url);
+            setPreviewReearth(data.reearth_url);
+          }
+          if (data.box_url) {
+            setBoxUrl(data.box_url);
+            setPreviewBox(data.box_url);
+          }
+          if (data.settings_dir) {
+            setLauncherDir(data.settings_dir);
+            setPreviewLauncherDir(data.settings_dir);
+          }
+          resolve(true);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsText(file);
+    });
+  }
+
   function save() {
     try {
       localStorage.setItem(STORAGE_REEARTH, reearthUrl || "");
@@ -180,7 +217,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         applyPreview,
         save,
         resetTo,
-        applyPreviewAndSave
+        applyPreviewAndSave,
+        loadSettingsFromFile
       }}
     >
       {children}

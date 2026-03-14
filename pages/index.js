@@ -72,7 +72,7 @@ function Inner() {
   const { 
     reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
-    applyPreview, save, resetTo, applyPreviewAndSave 
+    applyPreview, save, resetTo, applyPreviewAndSave, loadSettingsFromFile
   } = usePortal();
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
@@ -401,6 +401,33 @@ function Inner() {
               >
                 📥 設定ファイル (JSON) をダウンロード
               </button>
+
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  id="settings-upload"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      try {
+                        await loadSettingsFromFile(e.target.files[0]);
+                        alert("設定ファイルから読み込みました。");
+                      } catch (err) {
+                        alert("ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。");
+                      }
+                      e.target.value = null; // reset input
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => document.getElementById("settings-upload").click()}
+                  style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。"
+                >
+                  📂 設定ファイルを読み込む
+                </button>
+              </div>
 
               <button 
                 onClick={() => { applyPreview(); }} 
