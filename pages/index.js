@@ -72,8 +72,9 @@ function Inner() {
   const { 
     reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
-    applyPreview, save, resetTo, applyPreviewAndSave, loadSettingsFromFile, loadSettingsFromDir
+    applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
+  
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
@@ -417,6 +418,21 @@ function Inner() {
                   title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。"
                 >
                   📂 設定ファイルを読み込む
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const ok = await saveToFs();
+                      if (ok) alert("設定ファイルを保存しました。");
+                      else alert("ブラウザの保存に失敗しました。ローカルランチャーが起動している場合は『パスに保存』をお試しください。");
+                    } catch (e) {
+                      alert("保存に失敗しました。操作がキャンセルされた可能性があります。");
+                    }
+                  }}
+                  style={{ padding: '10px 16px', marginLeft: '8px', cursor: 'pointer', backgroundColor: "#0ea5e9", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  title="ブラウザのファイル選択ダイアログで保存先を選び、このマシン上に qgis_settings.json を書き出します。"
+                >
+                  💾 ファイルとして保存
                 </button>
               </div>
 

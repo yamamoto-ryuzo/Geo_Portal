@@ -225,6 +225,51 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     }
   }
 
+  // Save current preview/settings to a local file using File System Access API
+  async function saveToFs(filename = "qgis_settings.json") {
+    if (typeof window === "undefined") return false;
+    const payload = {
+      profile: previewQgisProfile,
+      project_path: previewQgisProjectPath,
+      reearth_url: previewReearth,
+      box_url: previewBox,
+      settings_dir: previewLauncherDir
+    };
+    try {
+      // Preferred: showSaveFilePicker (allows user to choose exact file)
+      if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [
+            {
+              description: "JSON",
+              accept: { "application/json": [".json"] }
+            }
+          ]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(JSON.stringify(payload, null, 2));
+        await writable.close();
+        return true;
+      }
+
+      // Fallback: showDirectoryPicker + write file inside selected directory
+      if (window.showDirectoryPicker) {
+        const dirHandle = await window.showDirectoryPicker();
+        const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(JSON.stringify(payload, null, 2));
+        await writable.close();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      console.warn("FS API save failed", e);
+      return false;
+    }
+  }
+
   function resetTo(initialVals = {}) {
     const queryReearth = getReearthFromQuery();
     const { reearth = queryReearth || initialReearth, box = initialBox } = initialVals;
@@ -266,6 +311,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         save,
         resetTo,
         applyPreviewAndSave,
+        saveToFs,
         loadSettingsFromFile,
         loadSettingsFromDir
       }}
