@@ -3,8 +3,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 const PortalContext = createContext(null);
 
 export function PortalProvider({ children, initialReearth, initialBox }) {
-  const STORAGE_REEARTH = "portal:reearthUrl";
-  const STORAGE_BOX = "portal:boxUrl";
+  // Settings are persisted as a single JSON object under 'portal:settings'
 
   function getReearthFromQuery() {
     if (typeof window === "undefined") return "";
@@ -24,10 +23,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   // Initialize with provided defaults; read persisted values on client mount.
   const [reearthUrl, setReearthUrl] = useState(() => {
     if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem('portal:settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.reearth_url) return parsed.reearth_url;
+        }
+      } catch (e) {}
       const q = getReearthFromQuery();
-      const stored = (() => { try { return localStorage.getItem(STORAGE_REEARTH); } catch (e) { return null; }})();
       if (q) return q;
-      if (stored) return stored;
       return initialReearth || "";
     }
     return initialReearth || "";
@@ -35,8 +39,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   const [boxUrl, setBoxUrl] = useState(() => {
     if (typeof window !== "undefined") {
-      const stored = (() => { try { return localStorage.getItem(STORAGE_BOX); } catch (e) { return null; }})();
-      return stored || initialBox || "";
+      try {
+        const raw = localStorage.getItem('portal:settings');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.box_url) return parsed.box_url;
+        }
+      } catch (e) {}
+      return initialBox || "";
     }
     return initialBox || "";
   });
@@ -105,12 +115,10 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     if (data.reearth_url) {
       setPreviewReearth(data.reearth_url);
       setReearthUrl(data.reearth_url);
-      try { localStorage.setItem(STORAGE_REEARTH, data.reearth_url); } catch (e) {}
     }
     if (data.box_url) {
       setPreviewBox(data.box_url);
       setBoxUrl(data.box_url);
-      try { localStorage.setItem(STORAGE_BOX, data.box_url); } catch (e) {}
     }
     if (data.profile) {
       setPreviewQgisProfile(data.profile);
@@ -162,8 +170,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   function save() {
     try {
-      localStorage.setItem(STORAGE_REEARTH, reearthUrl || "");
-      localStorage.setItem(STORAGE_BOX, boxUrl || "");
+      const payload = {
+        profile: qgisProfile,
+        project_path: qgisProjectPath,
+        reearth_url: reearthUrl,
+        box_url: boxUrl,
+        settings_dir: launcherDir
+      };
+      localStorage.setItem('portal:settings', JSON.stringify(payload));
       return true;
     } catch (e) {
       return false;
@@ -172,20 +186,6 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   // Apply the preview values and persist them immediately.
   async function applyPreviewAndSave() {
-    try {
-      // Persist preview values first to avoid async state timing issues
-      localStorage.setItem(STORAGE_REEARTH, previewReearth || "");
-      localStorage.setItem(STORAGE_BOX, previewBox || "");
-    } catch (e) {
-      // ignore
-    }
-    setReearthUrl(previewReearth);
-    setBoxUrl(previewBox);
-    setQgisProfile(previewQgisProfile);
-    setQgisProjectPath(previewQgisProjectPath);
-    setLauncherDir(previewLauncherDir);
-    // Local launcher integration removed; do not POST to 127.0.0.1. Persisted to localStorage only.
-    // Persist full settings object as well
     try {
       const payload = {
         profile: previewQgisProfile,
@@ -196,6 +196,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       };
       localStorage.setItem('portal:settings', JSON.stringify(payload));
     } catch (e) {}
+    setReearthUrl(previewReearth);
+    setBoxUrl(previewBox);
+    setQgisProfile(previewQgisProfile);
+    setQgisProjectPath(previewQgisProjectPath);
+    setLauncherDir(previewLauncherDir);
+    // Local launcher integration removed; persisted to localStorage only.
     return true;
   }
 
