@@ -384,37 +384,15 @@ function Inner() {
               <button 
                 onClick={async () => { 
                   const ok = await applyPreviewAndSave(); 
-                  if (ok) { alert('設定を保存しました。'); } 
-                  else { alert('ブラウザには保存されましたが、ローカルランチャーとの通信に失敗しました。'); } 
+                  if (ok) { alert('指定したパスに設定を保存（フォルダ自動作成）しました。'); } 
+                  else { alert('保存に失敗しました。ローカルランチャーが起動していない可能性があります。'); } 
                 }} 
                 style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
+                title="ローカルPCの指定したパスに設定ファイルを保存します。"
               >
-                ✓ 設定を保存
+                💾 パスに保存
               </button>
               
-              <button
-                onClick={() => {
-                  const payload = { 
-                    profile: previewQgisProfile || "default", 
-                    project_path: previewQgisProjectPath || "",
-                    reearth_url: previewReearth || "",
-                    box_url: previewBox || "",
-                    settings_dir: previewLauncherDir || "C:\\qgis_launcher"
-                  };
-                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-                  const downloadAnchorNode = document.createElement('a');
-                  downloadAnchorNode.setAttribute("href",     dataStr);
-                  downloadAnchorNode.setAttribute("download", "qgis_settings.json");
-                  document.body.appendChild(downloadAnchorNode);
-                  downloadAnchorNode.click();
-                  downloadAnchorNode.remove();
-                }}
-                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#10b981", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-                title="オンラインで作成した設定を qgis_settings.json としてダウンロードし、オフライン環境のexeと同じフォルダに配置できます。"
-              >
-                📥 設定ファイル (JSON) をダウンロード
-              </button>
-
               <div style={{ position: "relative", display: "inline-block" }}>
                 <input 
                   type="file" 
