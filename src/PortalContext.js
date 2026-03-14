@@ -87,7 +87,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
+          console.log("loadSettingsFromFile: raw content:", e.target.result);
           const data = JSON.parse(e.target.result);
+          console.log("loadSettingsFromFile: parsed:", data);
           if (data.profile) {
             setQgisProfile(data.profile);
             setPreviewQgisProfile(data.profile);
@@ -102,6 +104,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
             setPreviewReearth(data.reearth_url);
           }
           if (data.box_url) {
+            console.log("loadSettingsFromFile: setting box_url ->", data.box_url);
             setBoxUrl(data.box_url);
             setPreviewBox(data.box_url);
           }
@@ -114,6 +117,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           // and calling applyPreview() immediately can overwrite newly set values.
           resolve(true);
         } catch (err) {
+          console.error("loadSettingsFromFile: parse error", err);
           reject(err);
         }
       };
