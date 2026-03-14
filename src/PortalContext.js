@@ -63,6 +63,16 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   useEffect(() => {
     setPreviewBox(boxUrl);
   }, [boxUrl]);
+
+  // Debug: expose and log previewBox changes for troubleshooting
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        window.previewBox = previewBox;
+      }
+    } catch (e) {}
+    console.log("PortalContext: previewBox changed ->", previewBox);
+  }, [previewBox]);
   useEffect(() => {
     setPreviewQgisProfile(qgisProfile);
   }, [qgisProfile]);
