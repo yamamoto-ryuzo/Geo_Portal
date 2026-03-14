@@ -201,11 +201,28 @@ fn launch_qgis(profile_name: &str, project_path: &str) {
     let mut cmd = Command::new(&qgis_path);
     cmd.arg("--profile").arg(profile_name);
     
-    if !project_path.trim().is_empty() {
-        cmd.arg(project_path.trim());
-    }
-
-    match cmd.spawn()
+    // If empty, prefer settings_dir/ProjectFiles/ProjectFile.qgs as default
+    let p = if project_path.trim().is_empty() {
+        let mut def = PathBuf::from(settings_dir);
+        def.push("ProjectFiles");
+        def.push("ProjectFile.qgs");
+        if def.exists() {
+            def
+        } else {
+            // try qgz
+            let mut def2 = PathBuf::from(settings_dir);
+            def2.push("ProjectFiles");
+            def2.push("ProjectFile.qgz");
+            if def2.exists() {
+                def2
+            } else {
+                // nothing to prepare
+                return String::new();
+            }
+        }
+    } else {
+        PathBuf::from(project_path)
+    };
     {
         Ok(_) => println!("QGISの起動リクエストに成功しました。"),
         Err(e) => eprintln!("QGISの起動に失敗しました: {}", e),
