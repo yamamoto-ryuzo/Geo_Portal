@@ -304,7 +304,8 @@ function Inner() {
                       value={previewLauncherDir}
                       onChange={(e) => setPreviewLauncherDir(e.target.value)}
                       style={{ flex: 1, padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                      placeholder="C:\\qgis_launcher"
+                      placeholder="例: C:\\qgis_launcher — フォルダを入力してください"
+                      title="フォルダパスを入力してください（例: C:\\qgis_launcher）。ファイルパスを入れた場合、自動で親フォルダに変換されます。"
                     />
                   </div>
                 </div>
