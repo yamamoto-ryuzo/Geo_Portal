@@ -303,7 +303,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewReearth(reearth || "");
     setPreviewBox(box || "");
     setPreviewQgisProfile("default");
-    setPreviewQgisProjectPath("");
+    setPreviewQgisProjectPath("ProjectFile.qgs");
     setPreviewLauncherDir("C:\\qgis_launcher");
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
@@ -325,7 +325,6 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         qgisProjectPath,
         launcherDir,
         previewReearth,
-        setPreviewQgisProjectPath("ProjectFile.qgs");
         previewQgisProfile,
         previewQgisProjectPath,
         previewLauncherDir,
