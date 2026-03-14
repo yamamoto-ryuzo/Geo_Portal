@@ -357,7 +357,7 @@ function Inner() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイルパス (.qgs / .qgz)</label>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイル(.qgs / .qgz)</label>
                   <input
                     type="text"
                     value={previewQgisProjectPath}
