@@ -3,7 +3,6 @@ import { PortalProvider, usePortal } from "../src/PortalContext";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
-  { name: "BOX", url: "https://app.box.com/embed/s/" },
   { name: "Backlog", url: "https://backlog.com/ja/" },
 ];
 
@@ -51,7 +50,7 @@ function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-    reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
+    reearthUrl, previewReearth, setPreviewReearth,
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
@@ -59,10 +58,10 @@ function Inner() {
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
-    box: { id: "box", label: "BOX", src: SERVICES[1].url },
+    // BOX tab removed
     settings: { id: "settings", label: "ポータル設定" }
   };
-  const [tabs, setTabs] = useState(["reearth","googlemap","box","settings"]);
+  const [tabs, setTabs] = useState(["reearth","googlemap","settings"]);
   const [activeTab, setActiveTab] = useState("reearth");
   const [activeSettingsTab, setActiveSettingsTab] = useState("common");
 
@@ -120,19 +119,14 @@ function Inner() {
             <QgisLaunchButton />
 
             <div style={{ marginTop: "auto", borderTop: "1px solid #ccc", paddingTop: "10px" }}>
-              {(() => {
-                const currentOpenUrl = activeTab === 'reearth' ? reearthUrl : activeTab === 'box' ? boxUrl : selectedUrl;
-                return (
-                  <a
-                    href={currentOpenUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
-                  >
-                    別ウィンドウで開く ↗
-                  </a>
-                );
-              })()}
+                <a
+                  href={activeTab === 'reearth' ? reearthUrl : selectedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "block", textDecoration: "none", color: "#0070f3", fontSize: "0.9rem" }}
+                >
+                  別ウィンドウで開く ↗
+                </a>
             </div>
           </div>
         ) : (
@@ -216,16 +210,6 @@ function Inner() {
             loading="lazy"
           />
           <iframe
-            title="BOX Frame"
-            src={boxUrl}
-            width="100%"
-            height="100%"
-            style={{ border: "none", flex: 1, display: activeTab === "box" ? "block" : "none" }}
-            allowFullScreen
-            allow="clipboard-read; clipboard-write"
-            loading="lazy"
-          />
-          <iframe
             title="Google Maps"
             src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp"
             width="100%"
@@ -243,9 +227,8 @@ function Inner() {
             <div style={{ display: "flex", borderBottom: "2px solid #ddd", marginBottom: "20px" }}>
               {[
                 { id: "common", label: "共通設定" },
-                { id: "reearth", label: "Re:Earth" },
-                { id: "box", label: "BOX" },
-                { id: "qgis", label: "QGIS" }
+                  { id: "reearth", label: "Re:Earth" },
+                  { id: "qgis", label: "QGIS" }
               ].map(subTab => (
                 <button
                   key={subTab.id}
@@ -306,19 +289,7 @@ function Inner() {
                 </div>
               </div>
 
-              {/* BOX設定 */}
-              <div style={{ display: activeSettingsTab === "box" ? "block" : "none" }}>
-                <h3 style={{ marginTop: 0 }}>BOX 設定</h3>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>ウィジェット表示アドレス (URL)</label>
-                  <input
-                    type="text"
-                    value={previewBox}
-                    onChange={(e) => setPreviewBox(e.target.value)}
-                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                  />
-                </div>
-              </div>
+              {/* BOX removed */}
 
               {/* QGIS設定 */}
               <div style={{ display: activeSettingsTab === "qgis" ? "block" : "none" }}>
@@ -444,7 +415,7 @@ function Inner() {
 
 export default function Home() {
   return (
-    <PortalProvider initialReearth={SERVICES[0].url} initialBox={SERVICES[1].url}>
+    <PortalProvider initialReearth={SERVICES[0].url}>
       <Inner />
     </PortalProvider>
   );
