@@ -235,19 +235,6 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
 
 
 
-fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
-    if !dst.exists() { fs::create_dir_all(dst)?; }
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        let from = entry.path();
-        let to = dst.join(entry.file_name());
-        if file_type.is_dir() { copy_dir_all(&from, &to)?; }
-        else if file_type.is_file() { fs::copy(&from, &to)?; }
-    }
-    Ok(())
-}
-
 fn copy_dir_contents_skip(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if !dst.exists() { fs::create_dir_all(dst)?; }
     for entry in fs::read_dir(src)? {
