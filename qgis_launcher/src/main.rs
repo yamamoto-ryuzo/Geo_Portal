@@ -6,7 +6,6 @@ use std::process::Command;
 use serde::{Deserialize, Serialize};
 use winreg::enums::*;
 use winreg::RegKey;
-use mslnk::ShellLink;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QgisSettings {
@@ -34,11 +33,9 @@ impl Default for QgisSettings {
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// スタートアップに登録する
-    #[arg(long)]
-    register_startup: bool,
 
     /// 適用する環境設定プロファイル名
-    #[arg(short, long, default_value = "default")]
+    #[arg(short, long, default_value = "geo_custom")]
     profile: String,
 
     /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス
@@ -71,10 +68,7 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
 fn main() {
     let args = Args::parse();
 
-    if args.register_startup {
-        register_startup_shortcut(&args.settings_dir, &args.profile);
-        return;
-    }
+    
 
     let settings = get_current_settings(&args.settings_dir);
     let profile_to_use = if !settings.profile.trim().is_empty() && settings.profile != "default" {
@@ -203,47 +197,7 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
     }
 }
 
-fn register_startup_shortcut(settings_dir: &str, profile: &str) {
-    println!("スタートアップへの登録を開始します...");
 
-    let current_exe = match env::current_exe() {
-        Ok(p) => p,
-        Err(e) => { eprintln!("実行ファイルパス取得失敗: {}", e); return; }
-    };
-
-    let startup_dir = match get_startup_folder() {
-        Some(p) => p,
-        None => { eprintln!("スタートアップフォルダ取得失敗"); return; }
-    };
-
-    let shortcut_path = startup_dir.join("QGIS_Launcher.lnk");
-
-    let mut sl = match ShellLink::new(current_exe.to_str().unwrap()) {
-        Ok(l) => l,
-        Err(e) => { eprintln!("ショートカット初期化失敗: {}", e); return; }
-    };
-
-    let args = format!(r#"--profile {} --settings_dir \"{}\""#, profile, settings_dir);
-    sl.set_arguments(Some(args));
-
-    if let Some(dir) = current_exe.parent() {
-        sl.set_working_dir(Some(dir.to_str().unwrap().to_string()));
-    }
-
-    match sl.create_lnk(&shortcut_path) {
-        Ok(_) => println!("スタートアップに登録しました: {:?}", shortcut_path),
-        Err(e) => eprintln!("ショートカット作成失敗: {}", e),
-    }
-}
-
-fn get_startup_folder() -> Option<PathBuf> {
-    if let Ok(appdata) = env::var("APPDATA") {
-        let mut path = PathBuf::from(appdata);
-        path.push(r"Microsoft\Windows\Start Menu\Programs\Startup");
-        if path.exists() { return Some(path); }
-    }
-    None
-}
 
 fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if !dst.exists() { fs::create_dir_all(dst)?; }
