@@ -87,6 +87,8 @@ fn main() {
             }
         }
 
+    }
+
 
     let settings = get_current_settings(&args.settings_dir);
     let profile_to_use = if !settings.profile.trim().is_empty() && settings.profile != "default" {
