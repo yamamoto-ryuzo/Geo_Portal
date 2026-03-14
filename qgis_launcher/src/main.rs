@@ -248,11 +248,22 @@ async fn save_settings(State(state): State<AppState>, Json(mut settings): Json<Q
 
     let path = get_settings_path(&new_dir);
     
+    // もしそのディレクトリに既にファイルが存在すれば、既存のものを優先して読み込み直す（UIへの反映用）
+    if path.exists() {
+        if let Ok(data) = fs::read_to_string(&path) {
+            if let Ok(mut existing_settings) = serde_json::from_str::<QgisSettings>(&data) {
+                existing_settings.settings_dir = Some(new_dir);
+                return Json(existing_settings);
+            }
+        }
+    }
+
     // ディレクトリが存在しない場合は作成する
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
 
+    // ファイルが存在しなかった場合は、受け取った設定で新しく作成する
     if let Ok(data) = serde_json::to_string_pretty(&settings) {
         let _ = fs::write(path, data);
     }

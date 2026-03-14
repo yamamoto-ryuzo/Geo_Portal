@@ -72,7 +72,7 @@ function Inner() {
   const { 
     reearthUrl, boxUrl, previewReearth, previewBox, setPreviewReearth, setPreviewBox, 
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
-    applyPreview, save, resetTo, applyPreviewAndSave, loadSettingsFromFile
+    applyPreview, save, resetTo, applyPreviewAndSave, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
@@ -297,13 +297,26 @@ function Inner() {
                   <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
                     ※ネット環境とローカルPC（LGWAN等）の連携の要となるパスです。デフォルトは <code>C:\qgis_launcher</code> です。
                   </p>
-                  <input
-                    type="text"
-                    value={previewLauncherDir}
-                    onChange={(e) => setPreviewLauncherDir(e.target.value)}
-                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                    placeholder="C:\qgis_launcher"
-                  />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      type="text"
+                      value={previewLauncherDir}
+                      onChange={(e) => setPreviewLauncherDir(e.target.value)}
+                      style={{ flex: 1, padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
+                      placeholder="C:\qgis_launcher"
+                    />
+                    <button
+                      onClick={async () => {
+                        const ok = await loadSettingsFromDir(previewLauncherDir || "C:\\qgis_launcher");
+                        if (ok) { alert("指定したパスから設定を読み込みました。"); }
+                        else { alert("指定したパスから設定の読み込みに失敗しました。"); }
+                      }}
+                      style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#f59e0b", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold", whiteSpace: "nowrap" }}
+                      title="入力したパスにあるローカルPCのJSONファイルを読み込みます。"
+                    >
+                      🔄 パスから読込
+                    </button>
+                  </div>
                 </div>
               </div>
 

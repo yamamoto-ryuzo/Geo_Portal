@@ -133,6 +133,54 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     });
   }
 
+  // Load settings from the specified directory via the local launcher API
+  async function loadSettingsFromDir(dirPath) {
+    try {
+      // 一旦、対象ディレクトリをセットして保存するようなリクエストを送るか、
+      // 既存の GET /settings エンドポイントが `dirPath` を受け取らないため、
+      // 今回は一時的に POST /settings で新しい settings_dir だけを投げて
+      // バックエンド側でそのパスのJSONを読み込み直して返してもらう仕組みを利用します。
+      const res = await fetch("http://127.0.0.1:12345/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile: previewQgisProfile,
+          project_path: previewQgisProjectPath,
+          reearth_url: previewReearth,
+          box_url: previewBox,
+          settings_dir: dirPath
+        })
+      });
+      const data = await res.json();
+      
+      // バックエンドが新しいディレクトリから読み直したデータをUIに反映する
+      if (data.profile) {
+        setQgisProfile(data.profile);
+        setPreviewQgisProfile(data.profile);
+      }
+      if (data.project_path !== undefined) {
+        setQgisProjectPath(data.project_path);
+        setPreviewQgisProjectPath(data.project_path);
+      }
+      if (data.reearth_url) {
+        setReearthUrl(data.reearth_url);
+        setPreviewReearth(data.reearth_url);
+      }
+      if (data.box_url) {
+        setBoxUrl(data.box_url);
+        setPreviewBox(data.box_url);
+      }
+      if (data.settings_dir) {
+        setLauncherDir(data.settings_dir);
+        setPreviewLauncherDir(data.settings_dir);
+      }
+      return true;
+    } catch (e) {
+      console.warn("Could not load QGIS settings from specific directory", e);
+      return false;
+    }
+  }
+
   function save() {
     try {
       localStorage.setItem(STORAGE_REEARTH, reearthUrl || "");
@@ -218,7 +266,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         save,
         resetTo,
         applyPreviewAndSave,
-        loadSettingsFromFile
+        loadSettingsFromFile,
+        loadSettingsFromDir
       }}
     >
       {children}
