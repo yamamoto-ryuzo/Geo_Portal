@@ -105,12 +105,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
             setLauncherDir(data.settings_dir);
             setPreviewLauncherDir(data.settings_dir);
           }
-          // Immediately apply loaded values to the active state so UI reflects them
-          try {
-            applyPreview();
-          } catch (e) {
-            // ignore
-          }
+          // Values are already applied to state via setBoxUrl/setPreviewBox etc.
+          // Do not call applyPreview() here because React state updates are async
+          // and calling applyPreview() immediately can overwrite newly set values.
           resolve(true);
         } catch (err) {
           reject(err);
