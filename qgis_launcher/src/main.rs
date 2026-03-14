@@ -96,7 +96,8 @@ async fn main() {
         let cors = CorsLayer::permissive();
         let app = Router::new()
             .route("/launch/qgis", post(handle_web_request))
-            .route("/settings", get(get_settings).post(save_settings))
+                .route("/settings", get(get_settings).post(save_settings))
+                .route("/open-folder", post(open_folder))
             .layer(cors)
             .with_state(state);
 
@@ -268,6 +269,47 @@ async fn save_settings(State(state): State<AppState>, Json(mut settings): Json<Q
         let _ = fs::write(path, data);
     }
     Json(settings)
+}
+
+#[derive(Deserialize, Debug)]
+struct OpenFolderRequest {
+    settings_dir: Option<String>,
+}
+
+async fn open_folder(State(state): State<AppState>, Json(req): Json<OpenFolderRequest>) -> Json<serde_json::Value> {
+    let mut dir = state.settings_dir.lock().unwrap().clone();
+    if let Some(s) = req.settings_dir {
+        if !s.trim().is_empty() {
+            dir = s;
+            // update state
+            let mut locked = state.settings_dir.lock().unwrap();
+            *locked = dir.clone();
+        }
+    }
+
+    // Normalize: if it's a path to qgis_settings.json, use parent
+    if dir.to_lowercase().ends_with("qgis_settings.json") {
+        if let Some(idx) = dir.rfind('\\') {
+            dir = dir[..idx].to_string();
+        } else if let Some(idx) = dir.rfind('/') {
+            dir = dir[..idx].to_string();
+        }
+    }
+
+    // Ensure directory exists
+    let path = PathBuf::from(&dir);
+    if !path.exists() {
+        let _ = fs::create_dir_all(&path);
+    }
+
+    // Try to open in Explorer (Windows)
+    #[cfg(target_os = "windows")]
+    {
+        let cmd = format!("start \"\" \"{}\"", dir.replace('"', "\""));
+        let _ = Command::new("cmd").args(&["/C", &cmd]).spawn();
+    }
+
+    Json(serde_json::json!({"ok": true, "settings_dir": dir}))
 }
 
 // 自身をスタートアップフォルダに登録する

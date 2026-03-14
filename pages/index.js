@@ -391,26 +391,42 @@ function Inner() {
                   }}
                 />
                 <button
-                  onClick={async () => {
-                    // まず settings_dir から読み込めるか試す（ランチャー経由）
-                    try {
-                      const dir = previewLauncherDir || "C:\\qgis_launcher";
-                      const ok = await loadSettingsFromDir(dir);
-                      if (ok) {
-                        alert("指定フォルダから設定を読み込みました。");
-                        return;
-                      }
-                    } catch (e) {
-                      // ignore and fallback to file picker
-                    }
-
-                    // フォールバック: ユーザーにファイルを選んでもらう
-                    document.getElementById("settings-upload").click();
-                  }}
+                  onClick={() => document.getElementById("settings-upload").click()}
                   style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。まず設定フォルダから読み込みを試みます。"
+                  title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。"
                 >
                   📂 設定ファイルを読み込む
+                </button>
+                <button
+                  onClick={async () => {
+                    // フォルダを開くリクエストをローカルランチャーに送る
+                    try {
+                      let dir = previewLauncherDir || "C:\\qgis_launcher";
+                      if (typeof dir === "string") {
+                        const lower = dir.toLowerCase();
+                        if (lower.endsWith("qgis_settings.json")) {
+                          const idx = Math.max(dir.lastIndexOf("\\"), dir.lastIndexOf("/"));
+                          if (idx !== -1) dir = dir.substring(0, idx);
+                        }
+                      }
+                      const res = await fetch("http://127.0.0.1:12345/open-folder", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ settings_dir: dir })
+                      });
+                      if (res.ok) {
+                        alert("フォルダを開くコマンドを送信しました。");
+                      } else {
+                        throw new Error("ランチャーがエラーを返しました");
+                      }
+                    } catch (e) {
+                      alert("フォルダを開けませんでした。ランチャーが起動しているか確認してください。");
+                    }
+                  }}
+                  style={{ padding: '10px 16px', marginLeft: '8px', cursor: 'pointer', backgroundColor: "#06b6d4", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  title="設定フォルダをエクスプローラで開きます（ローカルランチャーが必要）。"
+                >
+                  📁 フォルダを開く
                 </button>
                 <button
                   onClick={async () => {
