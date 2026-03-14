@@ -59,3 +59,56 @@
 作業で追加・編集した主なファイル: [pages/index.js](pages/index.js#L1-L400)、[src/PortalContext.js](src/PortalContext.js#L1-L200)
 
 必要なら上記の次候補を試作します。どれを優先しますか？
+
+## QGIS Launcher (qgis_launcher)
+
+- シンプルに起動時に `qgis_settings.json` を参照して QGIS を起動します。
+- 起動優先順: `qgis_settings.json`（`settings_dir` 内、存在すれば）→ コマンドライン `--profile` 引数。
+- デフォルトの設定ファイル位置: `C:\qgis_launcher\qgis_settings.json`（`--settings_dir` で上書き可）。実行ファイルと同階層に置けばそちらが優先されます。
+- スタートアップ登録: `qgis_launcher.exe --register_startup` を実行するとスタートアップ用のショートカットが作成されます。作成されるショートカットの引数は次の形式です:
+
+```
+--profile <プロファイル名> --settings_dir "<設定ディレクトリのパス>"
+```
+
+- ビルド・実行例:
+
+```powershell
+cd qgis_launcher
+cargo build --release
+# 直接起動（コマンドライン指定のプロファイルで起動）
+.
+target\release\qgis_launcher.exe --profile geo_custum
+```
+
+変更や動作確認が必要であれば教えてください。
+
+### qgis_launcher: 追加ドキュメント（統合内容）
+
+- 必要な環境:
+	- Rust と Cargo（未インストールなら [rustup](https://rustup.rs/) をインストールしてください）
+
+- ビルド方法:
+
+```powershell
+cd qgis_launcher
+cargo build --release
+```
+
+ビルド成功後は `qgis_launcher\target\release\qgis_launcher.exe` が生成されます。生成された `.exe` は単体で動作するため、LGWAN 環境等へ配布可能です。
+
+- 使い方（例）:
+
+直接起動（デフォルトプロファイル）:
+
+```powershell
+.\qgis_launcher.exe
+```
+
+プロファイル指定:
+
+```powershell
+.\qgis_launcher.exe --profile "LGWAN_Profile"
+```
+
+（注）以前のドキュメントにあったローカルサーバーモード（`--server`）は削除済みです。本バージョンでは `qgis_settings.json` か CLI 引数でプロファイルを指定してください。

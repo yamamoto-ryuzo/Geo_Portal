@@ -1,12 +1,9 @@
-use axum::{extract::State, routing::{get, post}, Json, Router};
 use clap::Parser;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
-use tower_http::cors::CorsLayer;
 use winreg::enums::*;
 use winreg::RegKey;
 use mslnk::ShellLink;
@@ -24,7 +21,6 @@ impl Default for QgisSettings {
     fn default() -> Self {
         Self {
             profile: "default".to_string(),
-            // 入力欄のデフォルトを単純なファイル名にする
             project_path: "ProjectFile.qgs".to_string(),
             reearth_url: None,
             box_url: None,
@@ -33,40 +29,15 @@ impl Default for QgisSettings {
     }
 }
 
-#[derive(Clone)]
-struct AppState {
-    settings_dir: Arc<Mutex<String>>,
-}
-
-fn get_settings_path(custom_dir: &str) -> PathBuf {
-    // ユーザーが指定した（またはデフォルトの）ディレクトリ
-    let target_dir = PathBuf::from(custom_dir);
-    let target_path = target_dir.join("qgis_settings.json");
-    
-    // 指定ディレクトリが存在する場合はそこを使う
-    if target_dir.exists() {
-        return target_path;
-    }
-
-    // 存在しない場合は、フォールバックとして実行ファイルと同じディレクトリを使う
-    let mut path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-    path.pop(); // Remove exe name
-    path.join("qgis_settings.json")
-}
-
 /// QGIS起動用ランチャー
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-    /// Webポータルからのリクエストを待機するサーバーモードで起動するかどうか
-    #[arg(short, long)]
-    server: bool,
-
-    /// スタートアップにサーバーモードで登録する
+    /// スタートアップに登録する
     #[arg(long)]
     register_startup: bool,
 
-    /// （直接起動時）適用する環境設定プロファイル名
+    /// 適用する環境設定プロファイル名
     #[arg(short, long, default_value = "default")]
     profile: String,
 
@@ -75,168 +46,134 @@ struct Args {
     settings_dir: String,
 }
 
-#[tokio::main]
-async fn main() {
-    let args = Args::parse();
+fn get_settings_path(custom_dir: &str) -> PathBuf {
+    let target_dir = PathBuf::from(custom_dir);
+    let target_path = target_dir.join("qgis_settings.json");
 
-    if args.register_startup {
-        register_startup_shortcut();
-        return;
+    if target_dir.exists() {
+        return target_path;
     }
 
-    if args.server {
-        // --- A: 一般環境向け（ローカルサーバーモード） ---
-        println!("サーバーモードで起動します。Webポータルからのリクエストを待機中 (ポート: 12345)...");
-        println!("初期設定ディレクトリ: {}", args.settings_dir);
+    let mut path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+    path.pop();
+    path.join("qgis_settings.json")
+}
 
-        let state = AppState {
-            settings_dir: Arc::new(Mutex::new(args.settings_dir.clone())),
-        };
-
-        // CORS設定（Next.jsからのリクエストを許可）
-        let cors = CorsLayer::permissive();
-        let app = Router::new()
-            .route("/launch/qgis", post(handle_web_request))
-                .route("/settings", get(get_settings).post(save_settings))
-                .route("/open-folder", post(open_folder))
-            .layer(cors)
-            .with_state(state);
-
-        // Webブラウザでポータルを開く（オンラインURLを試し、ダメならローカルの index.html を開く）
-        // ここでは簡単にローカルのファイルを開くフォールバック動作を実装します
-        tokio::spawn(async {
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-            let mut portal_path = env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-            portal_path.pop();
-            portal_path.push("out"); // Next.jsのexport先
-            portal_path.push("index.html");
-            if portal_path.exists() {
-                // オフライン環境を想定し、ローカルのポータルを開く
-                let _ = Command::new("cmd").args(&["/C", "start", "", portal_path.to_str().unwrap()]).spawn();
-            }
-        });
-
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:12345").await.unwrap();
-        axum::serve(listener, app).await.unwrap();
+fn get_current_settings(custom_dir: &str) -> QgisSettings {
+    let path = get_settings_path(custom_dir);
+    if let Ok(data) = fs::read_to_string(path) {
+        serde_json::from_str(&data).unwrap_or_else(|_| QgisSettings::default())
     } else {
-        // --- B: LGWAN環境向け（直接起動モード） ---
-        println!("直接起動モード: プロファイル '{}' でQGISを起動します...", args.profile);
-        launch_qgis(&args.profile, "", &args.settings_dir);
+        QgisSettings::default()
     }
 }
 
-// レジストリからQGISのパスを自動検索する
+fn main() {
+    let args = Args::parse();
+
+    if args.register_startup {
+        register_startup_shortcut(&args.settings_dir, &args.profile);
+        return;
+    }
+
+    let settings = get_current_settings(&args.settings_dir);
+    let profile_to_use = if !settings.profile.trim().is_empty() && settings.profile != "default" {
+        settings.profile.clone()
+    } else {
+        args.profile.clone()
+    };
+
+    println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
+    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir);
+}
+
 fn find_qgis_path() -> Option<String> {
     println!("レジストリからQGISのパスを検索中...");
-    
-    // HKEY_CLASSES_ROOT にアクセス
     let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
 
-    // 1. .qgs の関連付け先 (ProgID) を取得
     let prog_id = match hkcr.open_subkey(r".qgs") {
         Ok(key) => match key.get_value::<String, _>("") {
-            Ok(val) => {
-                println!("成功: .qgs のProgIDが見つかりました -> {}", val);
-                val
-            },
+            Ok(val) => val,
             Err(e) => {
-                println!("失敗: .qgs キーの既定値が取得できませんでした -> {}", e);
+                eprintln!(".qgs の ProgID 取得に失敗: {}", e);
                 return None;
             }
         },
         Err(e) => {
-            println!("失敗: .qgs キーがレジストリ(HKEY_CLASSES_ROOT)に見つかりませんでした -> {}", e);
+            eprintln!(".qgs キーが見つかりません: {}", e);
             return None;
         }
     };
 
-    // 2. ProgID から実行ファイルのパスを取得
-    let cmd_path = format!(r"{}\shell\open\command", prog_id);
+    let cmd_path = format!(r"{}\\shell\\open\\command", prog_id);
     let command_string = match hkcr.open_subkey(&cmd_path) {
         Ok(key) => match key.get_value::<String, _>("") {
-            Ok(val) => {
-                println!("成功: 起動コマンドが見つかりました -> {}", val);
-                val
-            },
+            Ok(val) => val,
             Err(e) => {
-                println!("失敗: {} の既定値が取得できませんでした -> {}", cmd_path, e);
+                eprintln!("{} の既定値取得に失敗: {}", cmd_path, e);
                 return None;
             }
         },
         Err(e) => {
-            println!("失敗: {} キーがレジストリに見つかりませんでした -> {}", cmd_path, e);
+            eprintln!("{} キーが見つかりません: {}", cmd_path, e);
             return None;
         }
     };
 
-    // 3. レジストリの値 (例: "C:\Program Files\QGIS\bin\qgis-bin.exe" "%1") からパス部分だけを抽出
-    // ダブルクォーテーションで囲まれている場合を考慮
     let exe_path = if command_string.starts_with('"') {
         command_string.split('"').nth(1).unwrap_or(&command_string)
     } else {
         command_string.split_whitespace().next().unwrap_or(&command_string)
     };
 
-    println!("抽出されたQGIS実行ファイルパス: {}", exe_path);
-
     if exe_path.is_empty() {
-        println!("失敗: 実行ファイルパスが空でした。");
         None
     } else {
         Some(exe_path.to_string())
     }
 }
 
-// QGISを環境変数を設定して起動する実処理
 fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
-    // 事前: settings_dir/geo_profile を各 QGIS の profiles フォルダ直下の
-    // `geo_profile` にコピーする（profile 名は使わない）
     if let Ok(appdata) = env::var("APPDATA") {
-        let source_geo = PathBuf::from(settings_dir).join("geo_profile");
+        let source_profiles = PathBuf::from(settings_dir).join("profiles");
 
-        if source_geo.exists() {
-            let bases = ["QGIS3", "QGIS4"]; // 両方へ処理
+        if source_profiles.exists() {
+            let bases = ["QGIS3", "QGIS4"];
             for base in &bases {
                 let profiles_path = PathBuf::from(&appdata).join("QGIS").join(base).join("profiles");
 
                 if !profiles_path.exists() {
                     if let Err(e) = fs::create_dir_all(&profiles_path) {
-                        eprintln!("profiles フォルダの作成に失敗しました ({}): {}", base, e);
+                        eprintln!("profiles フォルダ作成失敗 ({}): {}", base, e);
                         continue;
                     }
                 }
 
-                let target_geo = profiles_path.join("geo_profile");
-                if !target_geo.exists() {
-                    println!("コピーします: {:?} -> {:?}", source_geo, target_geo);
-                    if let Err(e) = copy_dir_all(&source_geo, &target_geo) {
-                        eprintln!("geo_profile のコピーに失敗しました ({}): {}", base, e);
-                    } else {
-                        println!("geo_profile のコピーに成功しました: {}", base);
+                if profiles_path.exists() {
+                    if let Err(e) = fs::remove_dir_all(&profiles_path) {
+                        eprintln!("既存 profiles の削除失敗 ({}): {}", base, e);
+                        continue;
                     }
-                } else {
-                    println!("既に存在します: {:?}", target_geo);
+                }
+
+                if let Err(e) = copy_dir_all(&source_profiles, &profiles_path) {
+                    eprintln!("profiles のコピーに失敗しました ({}): {}", base, e);
                 }
             }
-        } else {
-            println!("コピー元の geo_profile が見つかりません: {:?}", source_geo);
         }
     }
 
     let qgis_path = match find_qgis_path() {
-        Some(path) => path,
+        Some(p) => p,
         None => {
-            eprintln!("エラー: QGISのインストールパスをレジストリ(.qgsの関連付け)から見つけることができませんでした。QGISが正しくインストールされているか確認してください。");
+            eprintln!("QGISの実行ファイルが見つかりませんでした。レジストリの関連付けを確認してください。");
             return;
         }
     };
 
-    println!("QGISを起動しています... パス: {}", qgis_path);
-
     let mut cmd = Command::new(&qgis_path);
     cmd.arg("--profile").arg(profile_name);
 
-    // Determine project path: fixed default is settings_dir/ProjectFiles/ProjectFile.qgs (or .qgz)
     let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
         let mut def = PathBuf::from(settings_dir);
         def.push("ProjectFiles");
@@ -266,190 +203,73 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
     }
 }
 
-// Webポータルからのリクエストを受け取った時のハンドラ
-async fn handle_web_request(State(state): State<AppState>) -> &'static str {
-    println!("Webポータルからの起動リクエストを受信しました。");
-    // 設定ファイルから読み込む
-    let dir = state.settings_dir.lock().unwrap().clone();
-    let settings = get_current_settings(&dir);
-    launch_qgis(&settings.profile, &settings.project_path, &dir);
-    "QGIS launched"
-}
-
-fn get_current_settings(custom_dir: &str) -> QgisSettings {
-    let path = get_settings_path(custom_dir);
-    if let Ok(data) = fs::read_to_string(path) {
-        serde_json::from_str(&data).unwrap_or_else(|_| QgisSettings::default())
-    } else {
-        QgisSettings::default()
-    }
-}
-
-async fn get_settings(State(state): State<AppState>) -> Json<QgisSettings> {
-    let dir = state.settings_dir.lock().unwrap().clone();
-    let mut settings = get_current_settings(&dir);
-    settings.settings_dir = Some(dir.clone());
-
-    // UI の入力欄に表示される project_path の既定値を調整する。
-    // フルパス（ドライブ文字や区切り文字を含む）や空文字の場合は
-    // 単純なファイル名 `ProjectFile.qgs` を表示する。
-    let pp = settings.project_path.trim();
-    if pp.is_empty() || pp.contains('\\') || pp.contains('/') || pp.contains(':') {
-        settings.project_path = "ProjectFile.qgs".to_string();
-    }
-
-    Json(settings)
-}
-
-async fn save_settings(State(state): State<AppState>, Json(mut settings): Json<QgisSettings>) -> Json<QgisSettings> {
-    let new_dir = settings.settings_dir.clone().unwrap_or_else(|| r"C:\qgis_launcher".to_string());
-    
-    // 状態を更新
-    {
-        let mut dir = state.settings_dir.lock().unwrap();
-        *dir = new_dir.clone();
-    }
-
-    let path = get_settings_path(&new_dir);
-    
-    // もしそのディレクトリに既にファイルが存在すれば、既存のものを優先して読み込み直す（UIへの反映用）
-    if path.exists() {
-        if let Ok(data) = fs::read_to_string(&path) {
-            if let Ok(mut existing_settings) = serde_json::from_str::<QgisSettings>(&data) {
-                existing_settings.settings_dir = Some(new_dir);
-                return Json(existing_settings);
-            }
-        }
-    }
-
-    // ディレクトリが存在しない場合は作成する
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-
-    // ファイルが存在しなかった場合は、受け取った設定で新しく作成する
-    if let Ok(data) = serde_json::to_string_pretty(&settings) {
-        let _ = fs::write(path, data);
-    }
-    Json(settings)
-}
-
-#[derive(Deserialize, Debug)]
-struct OpenFolderRequest {
-    settings_dir: Option<String>,
-}
-
-async fn open_folder(State(state): State<AppState>, Json(req): Json<OpenFolderRequest>) -> Json<serde_json::Value> {
-    let mut dir = state.settings_dir.lock().unwrap().clone();
-    if let Some(s) = req.settings_dir {
-        if !s.trim().is_empty() {
-            dir = s;
-            // update state
-            let mut locked = state.settings_dir.lock().unwrap();
-            *locked = dir.clone();
-        }
-    }
-
-    // Normalize: if it's a path to qgis_settings.json, use parent
-    if dir.to_lowercase().ends_with("qgis_settings.json") {
-        if let Some(idx) = dir.rfind('\\') {
-            dir = dir[..idx].to_string();
-        } else if let Some(idx) = dir.rfind('/') {
-            dir = dir[..idx].to_string();
-        }
-    }
-
-    // Ensure directory exists
-    let path = PathBuf::from(&dir);
-    if !path.exists() {
-        let _ = fs::create_dir_all(&path);
-    }
-
-    // Try to open in Explorer (Windows)
-    #[cfg(target_os = "windows")]
-    {
-        let cmd = format!("start \"\" \"{}\"", dir.replace('"', "\""));
-        let _ = Command::new("cmd").args(&["/C", &cmd]).spawn();
-    }
-
-    Json(serde_json::json!({"ok": true, "settings_dir": dir}))
-}
-
-// 自身をスタートアップフォルダに登録する
-fn register_startup_shortcut() {
+fn register_startup_shortcut(settings_dir: &str, profile: &str) {
     println!("スタートアップへの登録を開始します...");
 
-    // 現在の実行ファイルのパスを取得
     let current_exe = match env::current_exe() {
-        Ok(path) => path,
-        Err(e) => {
-            eprintln!("実行ファイルのパス取得に失敗しました: {}", e);
-            return;
-        }
+        Ok(p) => p,
+        Err(e) => { eprintln!("実行ファイルパス取得失敗: {}", e); return; }
     };
 
-    // スタートアップフォルダのパスを取得
     let startup_dir = match get_startup_folder() {
-        Some(path) => path,
-        None => {
-            eprintln!("スタートアップフォルダのパスが取得できませんでした。");
-            return;
-        }
+        Some(p) => p,
+        None => { eprintln!("スタートアップフォルダ取得失敗"); return; }
     };
 
     let shortcut_path = startup_dir.join("QGIS_Launcher.lnk");
 
-    // ショートカットを作成
     let mut sl = match ShellLink::new(current_exe.to_str().unwrap()) {
-        Ok(link) => link,
-        Err(e) => {
-            eprintln!("ショートカットの初期化に失敗しました: {}", e);
-            return;
-        }
+        Ok(l) => l,
+        Err(e) => { eprintln!("ショートカット初期化失敗: {}", e); return; }
     };
-    
-    // 引数として --server を設定
-    sl.set_arguments(Some("--server".to_string()));
-    
-    // 作業ディレクトリを設定（実行ファイルのあるディレクトリ）
+
+    let args = format!(r#"--profile {} --settings_dir \"{}\""#, profile, settings_dir);
+    sl.set_arguments(Some(args));
+
     if let Some(dir) = current_exe.parent() {
         sl.set_working_dir(Some(dir.to_str().unwrap().to_string()));
     }
 
     match sl.create_lnk(&shortcut_path) {
         Ok(_) => println!("スタートアップに登録しました: {:?}", shortcut_path),
-        Err(e) => eprintln!("ショートカットの作成に失敗しました: {}", e),
+        Err(e) => eprintln!("ショートカット作成失敗: {}", e),
     }
 }
 
-// Windowsのスタートアップフォルダのパスを取得する
 fn get_startup_folder() -> Option<PathBuf> {
     if let Ok(appdata) = env::var("APPDATA") {
         let mut path = PathBuf::from(appdata);
         path.push(r"Microsoft\Windows\Start Menu\Programs\Startup");
-        if path.exists() {
-            return Some(path);
-        }
+        if path.exists() { return Some(path); }
     }
     None
 }
 
-// ディレクトリを再帰的にコピーするヘルパ
 fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
-    if !dst.exists() {
-        fs::create_dir_all(dst)?;
-    }
-
+    if !dst.exists() { fs::create_dir_all(dst)?; }
     for entry in fs::read_dir(src)? {
         let entry = entry?;
         let file_type = entry.file_type()?;
-        let from_path = entry.path();
-        let to_path = dst.join(entry.file_name());
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if file_type.is_dir() { copy_dir_all(&from, &to)?; }
+        else if file_type.is_file() { fs::copy(&from, &to)?; }
+    }
+    Ok(())
+}
 
+fn copy_dir_contents_skip(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    if !dst.exists() { fs::create_dir_all(dst)?; }
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
         if file_type.is_dir() {
-            copy_dir_all(&from_path, &to_path)?;
+            if !to.exists() { fs::create_dir_all(&to)?; }
+            copy_dir_contents_skip(&from, &to)?;
         } else if file_type.is_file() {
-            fs::copy(&from_path, &to_path)?;
+            if !to.exists() { fs::copy(&from, &to)?; }
         }
     }
     Ok(())
