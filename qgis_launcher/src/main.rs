@@ -254,7 +254,16 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
 async fn get_settings(State(state): State<AppState>) -> Json<QgisSettings> {
     let dir = state.settings_dir.lock().unwrap().clone();
     let mut settings = get_current_settings(&dir);
-    settings.settings_dir = Some(dir);
+    settings.settings_dir = Some(dir.clone());
+
+    // UI の入力欄に表示される project_path の既定値を調整する。
+    // フルパス（ドライブ文字や区切り文字を含む）や空文字の場合は
+    // 単純なファイル名 `ProjectFile.qgs` を表示する。
+    let pp = settings.project_path.trim();
+    if pp.is_empty() || pp.contains('\\') || pp.contains('/') || pp.contains(':') {
+        settings.project_path = "ProjectFile.qgs".to_string();
+    }
+
     Json(settings)
 }
 
