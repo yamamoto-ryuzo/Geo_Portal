@@ -22,29 +22,33 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   }
 
   // Initialize with provided defaults; read persisted values on client mount.
-  const [reearthUrl, setReearthUrl] = useState(initialReearth || "");
-  const [boxUrl, setBoxUrl] = useState(initialBox || "");
+  const [reearthUrl, setReearthUrl] = useState(() => {
+    if (typeof window !== "undefined") {
+      const q = getReearthFromQuery();
+      const stored = (() => { try { return localStorage.getItem(STORAGE_REEARTH); } catch (e) { return null; }})();
+      if (q) return q;
+      if (stored) return stored;
+      return initialReearth || "";
+    }
+    return initialReearth || "";
+  });
+
+  const [boxUrl, setBoxUrl] = useState(() => {
+    if (typeof window !== "undefined") {
+      const stored = (() => { try { return localStorage.getItem(STORAGE_BOX); } catch (e) { return null; }})();
+      return stored || initialBox || "";
+    }
+    return initialBox || "";
+  });
   const [qgisProfile, setQgisProfile] = useState("default");
   const [qgisProjectPath, setQgisProjectPath] = useState("");
   const [launcherDir, setLauncherDir] = useState("C:\\qgis_launcher");
 
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
-    try {
-      const earthFromQuery = getReearthFromQuery();
-      const storedRe = localStorage.getItem(STORAGE_REEARTH);
-      const storedBox = localStorage.getItem(STORAGE_BOX);
-
-      if (earthFromQuery) {
-        setReearthUrl(earthFromQuery);
-      } else if (storedRe) {
-        setReearthUrl(storedRe);
-      }
-      if (storedBox) setBoxUrl(storedBox);
-    } catch (e) {
-      // ignore (localStorage not available)
-    }
-    // Note: local launcher HTTP integration removed. Do not attempt to contact 127.0.0.1.
+    // Note: local launcher HTTP integration removed. Initial values for
+    // `reearthUrl` and `boxUrl` are read from localStorage in the lazy
+    // initializer above so no further action is required here.
   }, []);
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
