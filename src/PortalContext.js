@@ -21,62 +21,46 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   }
 
   // Initialize with provided defaults; read persisted values on client mount.
-  const [reearthUrl, setReearthUrl] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem('portal:settings');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.reearth_url) return parsed.reearth_url;
-        }
-      } catch (e) {}
-      const q = getReearthFromQuery();
-      if (q) return q;
-      return initialReearth || "";
+  // Read saved portal settings (single-object) if available.
+  function getSavedSettings() {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem("portal:settings");
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
     }
+  }
+
+  const [reearthUrl, setReearthUrl] = useState(() => {
+    const saved = getSavedSettings();
+    const q = getReearthFromQuery();
+    if (saved && saved.reearth_url) return saved.reearth_url;
+    if (q) return q;
     return initialReearth || "";
   });
 
   const [boxUrl, setBoxUrl] = useState(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem('portal:settings');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && parsed.box_url) return parsed.box_url;
-        }
-      } catch (e) {}
-      return initialBox || "";
-    }
+    const saved = getSavedSettings();
+    if (saved && saved.box_url) return saved.box_url;
     return initialBox || "";
   });
-  const [qgisProfile, setQgisProfile] = useState("default");
-  const [qgisProjectPath, setQgisProjectPath] = useState("");
-  const [launcherDir, setLauncherDir] = useState("C:\\qgis_launcher");
 
-  // On client mount, attempt to load persisted values from localStorage.
-  useEffect(() => {
-    // Prefer a saved full-settings object if present.
-    try {
-      if (typeof window !== "undefined") {
-        const raw = localStorage.getItem('portal:settings');
-        if (raw) {
-          try {
-            const parsed = JSON.parse(raw);
-            if (parsed && typeof parsed === 'object') {
-              applyLoadedSettings(parsed);
-              return;
-            }
-          } catch (e) {
-            // fall through to legacy per-key behavior
-          }
-        }
-        // legacy: individual keys already handled by lazy initializers
-      }
-    } catch (e) {
-      // ignore (localStorage not available)
-    }
-  }, []);
+  const [qgisProfile, setQgisProfile] = useState(() => {
+    const saved = getSavedSettings();
+    return (saved && saved.profile) || "default";
+  });
+
+  const [qgisProjectPath, setQgisProjectPath] = useState(() => {
+    const saved = getSavedSettings();
+    return (saved && saved.project_path) || "";
+  });
+
+  const [launcherDir, setLauncherDir] = useState(() => {
+    const saved = getSavedSettings();
+    return (saved && saved.settings_dir) || "C:\\qgis_launcher";
+  });
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
@@ -264,8 +248,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setQgisProjectPath("");
     setLauncherDir("C:\\qgis_launcher");
     try {
-      localStorage.removeItem(STORAGE_REEARTH);
-      localStorage.removeItem(STORAGE_BOX);
+      localStorage.removeItem('portal:settings');
     } catch (e) {}
   }
 
