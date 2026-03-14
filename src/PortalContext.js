@@ -12,6 +12,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     return params.get("EARTH") || params.get("earth") || "";
   }
 
+  // Normalize preview value for project path: if it's empty or contains path characters,
+  // show simple default filename 'ProjectFile.qgs' in the UI input.
+  function normalizePreviewProjectPath(p) {
+    if (!p) return "ProjectFile.qgs";
+    if (typeof p !== "string") return "ProjectFile.qgs";
+    if (p.includes('\\') || p.includes('/') || p.includes(':')) return "ProjectFile.qgs";
+    return p;
+  }
+
   // Initialize with provided defaults; read persisted values on client mount.
   const [reearthUrl, setReearthUrl] = useState(initialReearth || "");
   const [boxUrl, setBoxUrl] = useState(initialBox || "");
@@ -40,21 +49,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     fetch("http://127.0.0.1:12345/settings")
       .then(res => res.json())
       .then(data => {
-      // Normalize preview value for project path: if it's empty or contains path characters,
-      // show simple default filename 'ProjectFile.qgs' in the UI input.
-      function normalizePreviewProjectPath(p) {
-        if (!p) return "ProjectFile.qgs";
-        if (typeof p !== "string") return "ProjectFile.qgs";
-        if (p.includes('\\') || p.includes('/') || p.includes(':')) return "ProjectFile.qgs";
-        return p;
-      }
         if (data.profile) {
           setQgisProfile(data.profile);
-          setPreviewQgisProfile(data.profile);
         }
         if (data.project_path !== undefined) {
           setQgisProjectPath(data.project_path);
-          setPreviewQgisProjectPath(data.project_path);
+          setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
         }
         if (data.reearth_url) {
           setReearthUrl(data.reearth_url);
@@ -76,8 +76,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
-              setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
-  const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(qgisProjectPath);
+  const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
+  const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(normalizePreviewProjectPath(qgisProjectPath));
   const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewQgisProfile(qgisProfile);
   }, [qgisProfile]);
   useEffect(() => {
-    setPreviewQgisProjectPath(qgisProjectPath);
+    setPreviewQgisProjectPath(normalizePreviewProjectPath(qgisProjectPath));
   }, [qgisProjectPath]);
   useEffect(() => {
     setPreviewLauncherDir(launcherDir);
@@ -112,12 +112,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         try {
           const data = JSON.parse(e.target.result);
           if (data.profile) {
-        setPreviewQgisProjectPath(normalizePreviewProjectPath(qgisProjectPath));
+            setQgisProfile(data.profile);
             setPreviewQgisProfile(data.profile);
           }
           if (data.project_path !== undefined) {
             setQgisProjectPath(data.project_path);
-            setPreviewQgisProjectPath(data.project_path);
+            setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
           }
           if (data.reearth_url) {
             setReearthUrl(data.reearth_url);
@@ -139,7 +139,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       reader.onerror = (err) => reject(err);
       reader.readAsText(file);
     });
-                setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
+  }
 
   // Load settings from the specified directory via the local launcher API
   async function loadSettingsFromDir(dirPath) {
@@ -154,10 +154,6 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           }
         }
       }
-      // 一旦、対象ディレクトリをセットして保存するようなリクエストを送るか、
-      // 既存の GET /settings エンドポイントが `dirPath` を受け取らないため、
-      // 今回は一時的に POST /settings で新しい settings_dir だけを投げて
-      // バックエンド側でそのパスのJSONを読み込み直して返してもらう仕組みを利用します。
       const res = await fetch("http://127.0.0.1:12345/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -170,15 +166,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         })
       });
       const data = await res.json();
-      
-      // バックエンドが新しいディレクトリから読み直したデータをUIに反映する
+
       if (data.profile) {
         setQgisProfile(data.profile);
         setPreviewQgisProfile(data.profile);
       }
       if (data.project_path !== undefined) {
         setQgisProjectPath(data.project_path);
-        setPreviewQgisProjectPath(data.project_path);
+        setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
       }
       if (data.reearth_url) {
         setReearthUrl(data.reearth_url);
