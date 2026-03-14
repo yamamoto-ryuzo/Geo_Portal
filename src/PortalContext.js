@@ -40,6 +40,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     fetch("http://127.0.0.1:12345/settings")
       .then(res => res.json())
       .then(data => {
+      // Normalize preview value for project path: if it's empty or contains path characters,
+      // show simple default filename 'ProjectFile.qgs' in the UI input.
+      function normalizePreviewProjectPath(p) {
+        if (!p) return "ProjectFile.qgs";
+        if (typeof p !== "string") return "ProjectFile.qgs";
+        if (p.includes('\\') || p.includes('/') || p.includes(':')) return "ProjectFile.qgs";
+        return p;
+      }
         if (data.profile) {
           setQgisProfile(data.profile);
           setPreviewQgisProfile(data.profile);
@@ -68,7 +76,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
-  const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
+              setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(qgisProjectPath);
   const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
 
@@ -104,7 +112,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         try {
           const data = JSON.parse(e.target.result);
           if (data.profile) {
-            setQgisProfile(data.profile);
+        setPreviewQgisProjectPath(normalizePreviewProjectPath(qgisProjectPath));
             setPreviewQgisProfile(data.profile);
           }
           if (data.project_path !== undefined) {
@@ -131,7 +139,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       reader.onerror = (err) => reject(err);
       reader.readAsText(file);
     });
-  }
+                setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
 
   // Load settings from the specified directory via the local launcher API
   async function loadSettingsFromDir(dirPath) {
@@ -317,7 +325,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         qgisProjectPath,
         launcherDir,
         previewReearth,
-        previewBox,
+        setPreviewQgisProjectPath("ProjectFile.qgs");
         previewQgisProfile,
         previewQgisProjectPath,
         previewLauncherDir,
