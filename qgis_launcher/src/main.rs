@@ -120,7 +120,7 @@ async fn main() {
     } else {
         // --- B: LGWAN環境向け（直接起動モード） ---
         println!("直接起動モード: プロファイル '{}' でQGISを起動します...", args.profile);
-        launch_qgis(&args.profile, "");
+        launch_qgis(&args.profile, "", &args.settings_dir);
     }
 }
 
@@ -187,7 +187,7 @@ fn find_qgis_path() -> Option<String> {
 }
 
 // QGISを環境変数を設定して起動する実処理
-fn launch_qgis(profile_name: &str, project_path: &str) {
+fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
     let qgis_path = match find_qgis_path() {
         Some(path) => path,
         None => {
@@ -200,30 +200,32 @@ fn launch_qgis(profile_name: &str, project_path: &str) {
 
     let mut cmd = Command::new(&qgis_path);
     cmd.arg("--profile").arg(profile_name);
-    
-    // If empty, prefer settings_dir/ProjectFiles/ProjectFile.qgs as default
-    let p = if project_path.trim().is_empty() {
+
+    // Determine project path: fixed default is settings_dir/ProjectFiles/ProjectFile.qgs (or .qgz)
+    let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
         let mut def = PathBuf::from(settings_dir);
         def.push("ProjectFiles");
         def.push("ProjectFile.qgs");
         if def.exists() {
-            def
+            Some(def)
         } else {
-            // try qgz
             let mut def2 = PathBuf::from(settings_dir);
             def2.push("ProjectFiles");
             def2.push("ProjectFile.qgz");
-            if def2.exists() {
-                def2
-            } else {
-                // nothing to prepare
-                return String::new();
-            }
+            if def2.exists() { Some(def2) } else { None }
         }
     } else {
-        PathBuf::from(project_path)
+        let pb = PathBuf::from(project_path);
+        if pb.exists() { Some(pb) } else { None }
     };
-    {
+
+    if let Some(p) = effective_project {
+        if let Some(s) = p.to_str() {
+            cmd.arg(s);
+        }
+    }
+
+    match cmd.spawn() {
         Ok(_) => println!("QGISの起動リクエストに成功しました。"),
         Err(e) => eprintln!("QGISの起動に失敗しました: {}", e),
     }
@@ -235,7 +237,7 @@ async fn handle_web_request(State(state): State<AppState>) -> &'static str {
     // 設定ファイルから読み込む
     let dir = state.settings_dir.lock().unwrap().clone();
     let settings = get_current_settings(&dir);
-    launch_qgis(&settings.profile, &settings.project_path);
+    launch_qgis(&settings.profile, &settings.project_path, &dir);
     "QGIS launched"
 }
 
