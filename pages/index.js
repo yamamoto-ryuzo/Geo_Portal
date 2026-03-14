@@ -391,7 +391,32 @@ function Inner() {
                   }}
                 />
                 <button
-                  onClick={() => document.getElementById("settings-upload").click()}
+                  onClick={async () => {
+                    // File System Access API を使って直接ファイルを選ばせる（対応ブラウザ）
+                    try {
+                      if (window.showOpenFilePicker) {
+                        const [handle] = await window.showOpenFilePicker({
+                          types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }],
+                          multiple: false
+                        });
+                        const file = await handle.getFile();
+                        if (file) {
+                          try {
+                            await loadSettingsFromFile(file);
+                            alert('設定ファイルから読み込みました。');
+                          } catch (err) {
+                            alert('ファイルの読み込みに失敗しました。正しいJSONファイルを選択してください。');
+                          }
+                          return;
+                        }
+                      }
+                    } catch (e) {
+                      // fallthrough to fallback
+                    }
+
+                    // フォールバック: 既存の非表示 input[type=file] を使う
+                    document.getElementById('settings-upload').click();
+                  }}
                   style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#6366f1", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
                   title="手元にある qgis_settings.json を読み込んで、この画面に反映させます。"
                 >
