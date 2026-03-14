@@ -304,19 +304,8 @@ function Inner() {
                       value={previewLauncherDir}
                       onChange={(e) => setPreviewLauncherDir(e.target.value)}
                       style={{ flex: 1, padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                      placeholder="C:\qgis_launcher"
+                      placeholder="C:\\qgis_launcher"
                     />
-                    <button
-                      onClick={async () => {
-                        const ok = await loadSettingsFromDir(previewLauncherDir || "C:\\qgis_launcher");
-                        if (ok) { alert("指定したパスから設定を読み込みました。"); }
-                        else { alert("指定したパスから設定の読み込みに失敗しました。"); }
-                      }}
-                      style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#f59e0b", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold", whiteSpace: "nowrap" }}
-                      title="入力したパスにあるローカルPCのJSONファイルを読み込みます。"
-                    >
-                      🔄 パスから読込
-                    </button>
                   </div>
                 </div>
               </div>
