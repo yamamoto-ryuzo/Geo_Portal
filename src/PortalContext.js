@@ -117,6 +117,26 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     }
   }
 
+  // Fallback: ensure BOX input DOM shows value even if React update didn't reflect.
+  function ensureBoxInputDom(url) {
+    if (typeof window === "undefined") return;
+    setTimeout(() => {
+      try {
+        const labels = Array.from(document.querySelectorAll('label'));
+        const label = labels.find(l => /ウィジェット表示アドレス/.test(l.textContent));
+        let input = null;
+        if (label) input = label.closest('div')?.querySelector('input') || label.nextElementSibling?.querySelector('input') || label.nextElementSibling;
+        if (!input) input = document.querySelector('input[type="text"]');
+        if (input) {
+          input.value = url;
+          // Dispatch input event so React-controlled components receive the change if needed
+          const ev = new Event('input', { bubbles: true });
+          input.dispatchEvent(ev);
+        }
+      } catch (e) {}
+    }, 80);
+  }
+
   // File upload handler
   function loadSettingsFromFile(file) {
     return new Promise((resolve, reject) => {
