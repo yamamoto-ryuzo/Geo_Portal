@@ -54,6 +54,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         }
         if (data.project_path !== undefined) {
           setQgisProjectPath(data.project_path);
+          // From launcher initial GET - normalize for UI so it shows 'ProjectFile.qgs' when appropriate
           setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
         }
         if (data.reearth_url) {
@@ -117,7 +118,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           }
           if (data.project_path !== undefined) {
             setQgisProjectPath(data.project_path);
-            setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
+            // When loading from a user-selected file, reflect the exact path in the UI
+            setPreviewQgisProjectPath(data.project_path);
           }
           if (data.reearth_url) {
             setReearthUrl(data.reearth_url);
@@ -173,7 +175,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       }
       if (data.project_path !== undefined) {
         setQgisProjectPath(data.project_path);
-        setPreviewQgisProjectPath(normalizePreviewProjectPath(data.project_path));
+        // When loading settings from a specific directory, reflect actual path
+        setPreviewQgisProjectPath(data.project_path);
       }
       if (data.reearth_url) {
         setReearthUrl(data.reearth_url);
