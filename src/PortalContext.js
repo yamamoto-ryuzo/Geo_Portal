@@ -133,6 +133,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
             setLauncherDir(data.settings_dir);
             setPreviewLauncherDir(data.settings_dir);
           }
+          // Immediately apply loaded values to the active state so UI reflects them
+          try {
+            applyPreview();
+          } catch (e) {
+            // ignore
+          }
           resolve(true);
         } catch (err) {
           reject(err);
@@ -190,6 +196,10 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         setLauncherDir(data.settings_dir);
         setPreviewLauncherDir(data.settings_dir);
       }
+      // Immediately apply loaded values to the active state so UI reflects them
+      try {
+        applyPreview();
+      } catch (e) {}
       return true;
     } catch (e) {
       console.warn("Could not load QGIS settings from specific directory", e);
