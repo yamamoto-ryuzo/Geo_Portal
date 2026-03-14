@@ -117,6 +117,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
             console.log("loadSettingsFromFile: setting box_url ->", data.box_url);
             setBoxUrl(data.box_url);
             setPreviewBox(data.box_url);
+            try {
+              localStorage.setItem(STORAGE_BOX, data.box_url);
+            } catch (e) {}
+            // Fallback: ensure previewBox is applied after a tick in case of
+            // hydration/timing issues that prevent immediate DOM update.
+            setTimeout(() => {
+              try { setPreviewBox(data.box_url); } catch (e) {}
+            }, 50);
           }
           if (data.settings_dir) {
             setLauncherDir(data.settings_dir);
