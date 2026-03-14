@@ -91,6 +91,32 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setLauncherDir(previewLauncherDir);
   }
 
+  // Apply loaded settings (from file) to preview and active states in one place
+  function applyLoadedSettings(data = {}) {
+    if (data.reearth_url) {
+      setPreviewReearth(data.reearth_url);
+      setReearthUrl(data.reearth_url);
+      try { localStorage.setItem(STORAGE_REEARTH, data.reearth_url); } catch (e) {}
+    }
+    if (data.box_url) {
+      setPreviewBox(data.box_url);
+      setBoxUrl(data.box_url);
+      try { localStorage.setItem(STORAGE_BOX, data.box_url); } catch (e) {}
+    }
+    if (data.profile) {
+      setPreviewQgisProfile(data.profile);
+      setQgisProfile(data.profile);
+    }
+    if (data.project_path !== undefined) {
+      setPreviewQgisProjectPath(data.project_path);
+      setQgisProjectPath(data.project_path);
+    }
+    if (data.settings_dir) {
+      setPreviewLauncherDir(data.settings_dir);
+      setLauncherDir(data.settings_dir);
+    }
+  }
+
   // File upload handler
   function loadSettingsFromFile(file) {
     return new Promise((resolve, reject) => {
@@ -100,39 +126,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
           console.log("loadSettingsFromFile: raw content:", e.target.result);
           const data = JSON.parse(e.target.result);
           console.log("loadSettingsFromFile: parsed:", data);
-          if (data.profile) {
-            setQgisProfile(data.profile);
-            setPreviewQgisProfile(data.profile);
-          }
-          if (data.project_path !== undefined) {
-            setQgisProjectPath(data.project_path);
-            // When loading from a user-selected file, reflect the exact path in the UI
-            setPreviewQgisProjectPath(data.project_path);
-          }
-          if (data.reearth_url) {
-            setReearthUrl(data.reearth_url);
-            setPreviewReearth(data.reearth_url);
-          }
-          if (data.box_url) {
-            console.log("loadSettingsFromFile: setting box_url ->", data.box_url);
-            setBoxUrl(data.box_url);
-            setPreviewBox(data.box_url);
-            try {
-              localStorage.setItem(STORAGE_BOX, data.box_url);
-            } catch (e) {}
-            // Fallback: ensure previewBox is applied after a tick in case of
-            // hydration/timing issues that prevent immediate DOM update.
-            setTimeout(() => {
-              try { setPreviewBox(data.box_url); } catch (e) {}
-            }, 50);
-          }
-          if (data.settings_dir) {
-            setLauncherDir(data.settings_dir);
-            setPreviewLauncherDir(data.settings_dir);
-          }
-          // Values are already applied to state via setBoxUrl/setPreviewBox etc.
-          // Do not call applyPreview() here because React state updates are async
-          // and calling applyPreview() immediately can overwrite newly set values.
+          applyLoadedSettings(data);
           resolve(true);
         } catch (err) {
           console.error("loadSettingsFromFile: parse error", err);
