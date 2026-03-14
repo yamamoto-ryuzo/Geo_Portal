@@ -372,18 +372,6 @@ function Inner() {
 
             {/* 共通フッター・操作ボタンエリア */}
             <div style={{ marginTop: 'auto', paddingTop: '20px', borderTop: '1px solid #ddd', display: 'flex', gap: '12px', flexWrap: "wrap", backgroundColor: "#fff" }}>
-              <button 
-                onClick={async () => { 
-                  const ok = await applyPreviewAndSave(); 
-                  if (ok) { alert('指定したパスに設定を保存（フォルダ自動作成）しました。'); } 
-                  else { alert('保存に失敗しました。ローカルランチャーが起動していない可能性があります。'); } 
-                }} 
-                style={{ padding: '10px 16px', cursor: 'pointer', backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-                title="ローカルPCの指定したパスに設定ファイルを保存します。"
-              >
-                💾 パスに保存
-              </button>
-              
               <div style={{ position: "relative", display: "inline-block" }}>
                 <input 
                   type="file" 
