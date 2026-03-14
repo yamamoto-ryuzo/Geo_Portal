@@ -143,14 +143,8 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
                     }
                 }
 
-                if profiles_path.exists() {
-                    if let Err(e) = fs::remove_dir_all(&profiles_path) {
-                        eprintln!("既存 profiles の削除失敗 ({}): {}", base, e);
-                        continue;
-                    }
-                }
-
-                if let Err(e) = copy_dir_all(&source_profiles, &profiles_path) {
+                // 既存 profiles は削除せず、設定側のファイルを上書きせずに追加する
+                if let Err(e) = copy_dir_contents_skip(&source_profiles, &profiles_path) {
                     eprintln!("profiles のコピーに失敗しました ({}): {}", base, e);
                 }
             }
