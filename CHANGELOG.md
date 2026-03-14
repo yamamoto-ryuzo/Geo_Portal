@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.7.0] - 2026-03-14
+- フロントエンドの設定読み込み/初期化を `portal:settings` へ一本化
+  - `src/PortalContext.js` の初期化ロジックを統一し、全ての設定値（Re:Earth, QGIS, launcherDirなど）を `portal:settings` から読み込むように変更
+  - レガシーな個別キー保存（per-key storage）を廃止し、`resetTo` は `portal:settings` を削除する動作へ統一
+- UI の整理: BOX タブと BOX 向け設定パネルを削除
+  - `pages/index.js` から BOX タブ・iframe・設定セクションを削除して、関連 state 参照を整理
+- その他の修正
+  - ローカルランチャー呼び出しのフロント側統合を削除し、ブラウザ側は localStorage / File System Access API にフォールバックするよう整理
+
 ## [0.6.0] - 2026-03-14
 - ブラウザ側でのファイル入出力を改善
   - `設定ファイルを読み込む` を `showOpenFilePicker`（対応ブラウザ）で直接ファイル選択して読み込む挙動に変更。非対応時は既存のファイル入力にフォールバック。 (`pages/index.js`, `src/PortalContext.js`)
