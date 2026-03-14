@@ -183,14 +183,12 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
             // project_path が単なるファイル名（親ディレクトリが無い）なら
             // 実行ファイルと同じ階層にある「実行ファイル名（拡張子前）」フォルダ内を探す
             if pb.parent().is_none() {
-                if let Ok(mut exe_path) = env::current_exe() {
-                    let exe_stem_opt = exe_path.file_stem().and_then(|s| s.to_str().map(|s| s.to_string()));
-                    if let Some(exe_stem) = exe_stem_opt {
+                // project_path が単なるファイル名の場合、プロジェクト名のフォルダを探す
+                if let Some(proj_stem) = pb.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
+                    if let Ok(mut exe_path) = env::current_exe() {
                         exe_path.pop(); // exe のあるフォルダ
-                        let candidate = exe_path.join(exe_stem).join(&pb);
-                        if candidate.exists() {
-                            Some(candidate)
-                        } else { None }
+                        let candidate = exe_path.join(proj_stem).join(&pb);
+                        if candidate.exists() { Some(candidate) } else { None }
                     } else { None }
                 } else { None }
             } else { None }
