@@ -46,9 +46,26 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   // On client mount, attempt to load persisted values from localStorage.
   useEffect(() => {
-    // Note: local launcher HTTP integration removed. Initial values for
-    // `reearthUrl` and `boxUrl` are read from localStorage in the lazy
-    // initializer above so no further action is required here.
+    // Prefer a saved full-settings object if present.
+    try {
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem('portal:settings');
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === 'object') {
+              applyLoadedSettings(parsed);
+              return;
+            }
+          } catch (e) {
+            // fall through to legacy per-key behavior
+          }
+        }
+        // legacy: individual keys already handled by lazy initializers
+      }
+    } catch (e) {
+      // ignore (localStorage not available)
+    }
   }, []);
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
@@ -65,14 +82,6 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   }, [boxUrl]);
 
   // Debug: expose and log previewBox changes for troubleshooting
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        window.previewBox = previewBox;
-      }
-    } catch (e) {}
-    console.log("PortalContext: previewBox changed ->", previewBox);
-  }, [previewBox]);
   useEffect(() => {
     setPreviewQgisProfile(qgisProfile);
   }, [qgisProfile]);
@@ -115,27 +124,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       setPreviewLauncherDir(data.settings_dir);
       setLauncherDir(data.settings_dir);
     }
+    // Persist the whole settings object for full restore
+    try {
+      if (typeof window !== "undefined") {
+        localStorage.setItem('portal:settings', JSON.stringify(data));
+      }
+    } catch (e) {}
   }
 
-  // Fallback: ensure BOX input DOM shows value even if React update didn't reflect.
-  function ensureBoxInputDom(url) {
-    if (typeof window === "undefined") return;
-    setTimeout(() => {
-      try {
-        const labels = Array.from(document.querySelectorAll('label'));
-        const label = labels.find(l => /ウィジェット表示アドレス/.test(l.textContent));
-        let input = null;
-        if (label) input = label.closest('div')?.querySelector('input') || label.nextElementSibling?.querySelector('input') || label.nextElementSibling;
-        if (!input) input = document.querySelector('input[type="text"]');
-        if (input) {
-          input.value = url;
-          // Dispatch input event so React-controlled components receive the change if needed
-          const ev = new Event('input', { bubbles: true });
-          input.dispatchEvent(ev);
-        }
-      } catch (e) {}
-    }, 80);
-  }
+  
 
   // File upload handler
   function loadSettingsFromFile(file) {
@@ -143,9 +140,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          console.log("loadSettingsFromFile: raw content:", e.target.result);
           const data = JSON.parse(e.target.result);
-          console.log("loadSettingsFromFile: parsed:", data);
           applyLoadedSettings(data);
           resolve(true);
         } catch (err) {
@@ -190,6 +185,17 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setQgisProjectPath(previewQgisProjectPath);
     setLauncherDir(previewLauncherDir);
     // Local launcher integration removed; do not POST to 127.0.0.1. Persisted to localStorage only.
+    // Persist full settings object as well
+    try {
+      const payload = {
+        profile: previewQgisProfile,
+        project_path: previewQgisProjectPath,
+        reearth_url: previewReearth,
+        box_url: previewBox,
+        settings_dir: previewLauncherDir
+      };
+      localStorage.setItem('portal:settings', JSON.stringify(payload));
+    } catch (e) {}
     return true;
   }
 
