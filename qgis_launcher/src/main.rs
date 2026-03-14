@@ -199,6 +199,32 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
 
     println!("QGISを起動しています... パス: {}", qgis_path);
 
+    // 起動前に、プロファイル内に geo_profile が存在しなければ
+    // `settings_dir/geo_profile` をプロファイルフォルダへ複写する
+    if let Ok(appdata) = env::var("APPDATA") {
+        let profile_dir = PathBuf::from(appdata)
+            .join("QGIS")
+            .join("QGIS3")
+            .join("profiles")
+            .join(profile_name);
+
+        let target_geo = profile_dir.join("geo_profile");
+        let source_geo = PathBuf::from(settings_dir).join("geo_profile");
+
+        if !target_geo.exists() {
+            if source_geo.exists() {
+                println!("プロファイルに geo_profile が存在しないためコピーします: {:?} -> {:?}", source_geo, target_geo);
+                if let Err(e) = copy_dir_all(&source_geo, &target_geo) {
+                    eprintln!("geo_profile のコピーに失敗しました: {}", e);
+                } else {
+                    println!("geo_profile のコピーに成功しました。");
+                }
+            } else {
+                println!("コピー元の geo_profile が見つかりません: {:?}", source_geo);
+            }
+        }
+    }
+
     let mut cmd = Command::new(&qgis_path);
     cmd.arg("--profile").arg(profile_name);
 
@@ -398,4 +424,25 @@ fn get_startup_folder() -> Option<PathBuf> {
         }
     }
     None
+}
+
+// ディレクトリを再帰的にコピーするヘルパ
+fn copy_dir_all(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+    if !dst.exists() {
+        fs::create_dir_all(dst)?;
+    }
+
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let from_path = entry.path();
+        let to_path = dst.join(entry.file_name());
+
+        if file_type.is_dir() {
+            copy_dir_all(&from_path, &to_path)?;
+        } else if file_type.is_file() {
+            fs::copy(&from_path, &to_path)?;
+        }
+    }
+    Ok(())
 }
