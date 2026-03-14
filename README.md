@@ -67,6 +67,9 @@
 - デフォルトの設定ファイル位置: `C:\qgis_launcher\qgis_settings.json`（`--settings_dir` で上書き可）。実行ファイルと同階層に置けばそちらが優先されます。
 - スタートアップ登録: `qgis_launcher.exe --register_startup` を実行するとスタートアップ用のショートカットが作成されます。作成されるショートカットの引数は次の形式です:
 
+```
+--profile <プロファイル名> --settings_dir "<設定ディレクトリのパス>"
+```
 
 - ビルド・実行例:
 
@@ -108,4 +111,4 @@ cargo build --release
 .\qgis_launcher.exe --profile "LGWAN_Profile"
 ```
 
-（注）以前のドキュメントにあったローカルサーバーモード（`--server`）は削除済みです。本バージョンでは `qgis_settings.json` か CLI 引数でプロファイルを指定してください。
+（注）本バージョンでは `qgis_settings.json` か CLI 引数でプロファイルを指定してください。
