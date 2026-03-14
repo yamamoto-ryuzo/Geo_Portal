@@ -189,16 +189,6 @@ fn find_qgis_path() -> Option<String> {
 
 // QGISを環境変数を設定して起動する実処理
 fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
-    let qgis_path = match find_qgis_path() {
-        Some(path) => path,
-        None => {
-            eprintln!("エラー: QGISのインストールパスをレジストリ(.qgsの関連付け)から見つけることができませんでした。QGISが正しくインストールされているか確認してください。");
-            return;
-        }
-    };
-
-    println!("QGISを起動しています... パス: {}", qgis_path);
-
     // 起動前に、プロファイル内に geo_profile が存在しなければ
     // `settings_dir/geo_profile` をプロファイルフォルダへ複写する
     if let Ok(appdata) = env::var("APPDATA") {
@@ -224,6 +214,16 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
             }
         }
     }
+
+    let qgis_path = match find_qgis_path() {
+        Some(path) => path,
+        None => {
+            eprintln!("エラー: QGISのインストールパスをレジストリ(.qgsの関連付け)から見つけることができませんでした。QGISが正しくインストールされているか確認してください。");
+            return;
+        }
+    };
+
+    println!("QGISを起動しています... パス: {}", qgis_path);
 
     let mut cmd = Command::new(&qgis_path);
     cmd.arg("--profile").arg(profile_name);
