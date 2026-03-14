@@ -24,7 +24,8 @@ impl Default for QgisSettings {
     fn default() -> Self {
         Self {
             profile: "default".to_string(),
-            project_path: "".to_string(),
+            // 入力欄のデフォルトを単純なファイル名にする
+            project_path: "ProjectFile.qgs".to_string(),
             reearth_url: None,
             box_url: None,
             settings_dir: Some(r"C:\qgis_launcher".to_string()),
