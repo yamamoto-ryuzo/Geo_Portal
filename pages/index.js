@@ -397,37 +397,7 @@ function Inner() {
                 >
                   📂 設定ファイルを読み込む
                 </button>
-                <button
-                  onClick={async () => {
-                    // フォルダを開くリクエストをローカルランチャーに送る
-                    try {
-                      let dir = previewLauncherDir || "C:\\qgis_launcher";
-                      if (typeof dir === "string") {
-                        const lower = dir.toLowerCase();
-                        if (lower.endsWith("qgis_settings.json")) {
-                          const idx = Math.max(dir.lastIndexOf("\\"), dir.lastIndexOf("/"));
-                          if (idx !== -1) dir = dir.substring(0, idx);
-                        }
-                      }
-                      const res = await fetch("http://127.0.0.1:12345/open-folder", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ settings_dir: dir })
-                      });
-                      if (res.ok) {
-                        alert("フォルダを開くコマンドを送信しました。");
-                      } else {
-                        throw new Error("ランチャーがエラーを返しました");
-                      }
-                    } catch (e) {
-                      alert("フォルダを開けませんでした。ランチャーが起動しているか確認してください。");
-                    }
-                  }}
-                  style={{ padding: '10px 16px', marginLeft: '8px', cursor: 'pointer', backgroundColor: "#06b6d4", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  title="設定フォルダをエクスプローラで開きます（ローカルランチャーが必要）。"
-                >
-                  📁 フォルダを開く
-                </button>
+                
                 <button
                   onClick={async () => {
                     try {
