@@ -67,14 +67,25 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
 
 fn main() {
     let args = Args::parse();
+    // 起動時の実行ファイルパスとカレントディレクトリをログ出力（デバッグ用）
+    match env::current_exe() {
+        Ok(p) => println!("DEBUG: current_exe = {:?}", p),
+        Err(e) => eprintln!("DEBUG: current_exe 取得失敗: {}", e),
+    }
+    match env::current_dir() {
+        Ok(d) => println!("DEBUG: current_dir (before) = {:?}", d),
+        Err(e) => eprintln!("DEBUG: current_dir 取得失敗: {}", e),
+    }
+
     // 実行ファイルのフォルダをカレントディレクトリに設定する
     if let Ok(exe_path) = env::current_exe() {
         if let Some(parent) = exe_path.parent() {
             if let Err(e) = env::set_current_dir(parent) {
                 eprintln!("カレントディレクトリ設定失敗: {}", e);
+            } else if let Ok(d) = env::current_dir() {
+                println!("DEBUG: current_dir (after) = {:?}", d);
             }
         }
-    }
 
 
     let settings = get_current_settings(&args.settings_dir);
