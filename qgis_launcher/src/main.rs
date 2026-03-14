@@ -189,28 +189,30 @@ fn find_qgis_path() -> Option<String> {
 
 // QGISを環境変数を設定して起動する実処理
 fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
-    // 起動前に、プロファイル内に geo_profile が存在しなければ
-    // `settings_dir/geo_profile` を QGIS4 と QGIS3 のプロファイルフォルダへ複写する
+    // 事前: settings_dir/geo_profile を各 QGIS の profiles フォルダ直下の
+    // `geo_profile` にコピーする（profile 名は使わない）
     if let Ok(appdata) = env::var("APPDATA") {
         let source_geo = PathBuf::from(settings_dir).join("geo_profile");
 
         if source_geo.exists() {
-            let versions = ["QGIS4", "QGIS3"];
-            for ver in &versions {
-                let profile_dir = PathBuf::from(&appdata)
-                    .join("QGIS")
-                    .join(ver)
-                    .join("profiles")
-                    .join(profile_name);
+            let bases = ["QGIS3", "QGIS4"]; // 両方へ処理
+            for base in &bases {
+                let profiles_path = PathBuf::from(&appdata).join("QGIS").join(base).join("profiles");
 
-                let target_geo = profile_dir.join("geo_profile");
+                if !profiles_path.exists() {
+                    if let Err(e) = fs::create_dir_all(&profiles_path) {
+                        eprintln!("profiles フォルダの作成に失敗しました ({}): {}", base, e);
+                        continue;
+                    }
+                }
 
+                let target_geo = profiles_path.join("geo_profile");
                 if !target_geo.exists() {
-                    println!("プロファイルに geo_profile が存在しないためコピーします: {:?} -> {:?}", source_geo, target_geo);
+                    println!("コピーします: {:?} -> {:?}", source_geo, target_geo);
                     if let Err(e) = copy_dir_all(&source_geo, &target_geo) {
-                        eprintln!("geo_profile のコピーに失敗しました ({}): {}", ver, e);
+                        eprintln!("geo_profile のコピーに失敗しました ({}): {}", base, e);
                     } else {
-                        println!("geo_profile のコピーに成功しました: {}", ver);
+                        println!("geo_profile のコピーに成功しました: {}", base);
                     }
                 } else {
                     println!("既に存在します: {:?}", target_geo);
