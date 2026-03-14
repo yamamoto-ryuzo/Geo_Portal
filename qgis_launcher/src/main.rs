@@ -67,8 +67,15 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
 
 fn main() {
     let args = Args::parse();
+    // 実行ファイルのフォルダをカレントディレクトリに設定する
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            if let Err(e) = env::set_current_dir(parent) {
+                eprintln!("カレントディレクトリ設定失敗: {}", e);
+            }
+        }
+    }
 
-    
 
     let settings = get_current_settings(&args.settings_dir);
     let profile_to_use = if !settings.profile.trim().is_empty() && settings.profile != "default" {
@@ -160,6 +167,12 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
     };
 
     let mut cmd = Command::new(&qgis_path);
+    // QGIS プロセスの作業ディレクトリを実行ファイルのフォルダに設定
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            cmd.current_dir(parent);
+        }
+    }
     cmd.arg("--profile").arg(profile_name);
 
     let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
