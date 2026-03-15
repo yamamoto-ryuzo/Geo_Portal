@@ -1,0 +1,200 @@
+
+<!DOCTYPE html>
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>QGIS Capas de hojas de cálculo &#8212; documentación de SpreadsheetLayers - 1.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/translations.js"></script>
+    
+    <link rel="index" title="Índice" href="genindex.html" />
+    <link rel="search" title="Búsqueda" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navegación</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="Índice General"
+             accesskey="I">índice</a></li>
+        <li class="nav-item nav-item-0"><a href="#">documentación de SpreadsheetLayers - 1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">QGIS Capas de hojas de cálculo</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="qgis-spreadsheetlayers">
+<h1>QGIS Capas de hojas de cálculo<a class="headerlink" href="#qgis-spreadsheetlayers" title="Enlazar permanentemente con este título">¶</a></h1>
+<p>Herramienta de QGIS para cargar capas desde hojas de cálculo (<a href="#id1"><span class="problematic" id="id2">*</span></a>.ods, *.xls, *.xlsx)</p>
+<section id="description">
+<h2>Descripción<a class="headerlink" href="#description" title="Enlazar permanentemente con este título">¶</a></h2>
+<p>Esta herramienta añade la entrada «Añadir capa de hoja de cálculo» en el menú Capa / Añadir nueva capa y un botón correspondiente en la barra de menú Capas. Estos dos enlaces abren el mismo dialogo para cargar una capa desde el archivo de la hoja de cálculo con algunas opciones:</p>
+<ul class="simple">
+<li><p>Seleccionar archivo</p></li>
+<li><p>Nombre de la capa</p></li>
+<li><p>Selección de la hoja</p></li>
+<li><p>Cabecera como primera línea</p></li>
+<li><p>Ignorar algunas filas</p></li>
+<li><p>Cargar geometría desde los campos X e Y.</p></li>
+</ul>
+<p>Cuando el diálogo es aceptado, se crea un nuevo archivo virtual GDAL en la misma carpeta que el archivo de datos origen y el nombre de la capa, con el sufijo «.vrt», que se carga en QGIS.</p>
+<p>Cuando se reutiliza el mismo archivo dos veces, el cuadro de diálogo carga sus valores desde el archivo «´.vrt» existente.</p>
+</section>
+<section id="limitations">
+<h2>Limitaciones<a class="headerlink" href="#limitations" title="Enlazar permanentemente con este título">¶</a></h2>
+<p>Debido a que GDAL/OGR carece de funcionalidades:</p>
+<ul class="simple">
+<li><p>Utilización de la línea de encabezamiento por fichero;</p></li>
+<li><p>Ignorar líneas al inicio del archivo ;</p></li>
+<li><p>Detección correcta final de los archivos .XLS</p></li>
+</ul>
+<p>La herramienta utiliza la sentencia Select de SQLite con los parámetros offset y limit para extraer datos correspondientes desde el archivo base. Cuando una de estas funcionalidades se encuentra en uso, podría tener algunos efectos secundarios.</p>
+<p>Con GDAL &lt;= 1.11.1, la herramienta no puede cargar geometría. Con el cajetín de herramientas Geometría está bloqueado. Para obtener la versión actual de GDAL que se está utilizando, corre estos comandos en la consola de Python en QGIS.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">osgeo.gdal</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">osgeo</span><span class="o">.</span><span class="n">gdal</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Cuando abres un archivo de hoja de cálculo, GDAL/OGR intentará detectar los tipos de datos de las columnas (Fecha, Entero, Real, Texto…). Esta detección ocurre fuera de la cabecera de la herramienta e ignora las funcionalidades de línea, entonces cuando lo usas, GDAL/OGR puede estar apto para estar disponible para detectar correctamente los tipos de datos.</p>
+</section>
+<section id="configuration">
+<h2>Configuración<a class="headerlink" href="#configuration" title="Enlazar permanentemente con este título">¶</a></h2>
+<p>GDAL no permite definir la presencia de cabeceras de línea por capa, esta selección se realiza a través de un entorno para cada driver <em>OGR_ODS_HEADERS</em>, <em>OGR_XLS_HEADERS</em> y <em>OGR_XLSX_HEADERS</em>, con tres posibles valores:  <em>FORCE</em>, <em>DISABLE</em> y  <em>AUTO</em>. Para más detalles consulte los drivers de la documentación:
+<a class="reference external" href="http://www.gdal.org/drv_ods.html">http://www.gdal.org/drv_ods.html</a>, <a class="reference external" href="http://www.gdal.org/drv_xls.html">http://www.gdal.org/drv_xls.html</a> and <a class="reference external" href="http://www.gdal.org/drv_xlsx.html">http://www.gdal.org/drv_xlsx.html</a>.</p>
+<p>Puedes cambiar estos valores en la configuración de QGIS</p>
+<ul>
+<li><p>Abre el cuadro de diálogo «Configuraciones» / «Opciones»:</p></li>
+<li><p>Seleccionar «Sistema», espacio e ir a la sección Entorno</p></li>
+<li><p>Marcar «Usar variables personalizadas»</p></li>
+<li><p>Añade una nueva línea. Ejemplo:</p>
+<blockquote>
+<div><p>Sobreescribir  | <em>OGR_ODS_HEADERS</em> | <em>FORCE</em></p>
+</div></blockquote>
+</li>
+<li><p>Reiniciar QGIS para tomar esto en consideración</p></li>
+</ul>
+</section>
+<section id="development-install-linux">
+<h2>Instalación de Desarrollo (Linux)<a class="headerlink" href="#development-install-linux" title="Enlazar permanentemente con este título">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>git clone git@github.com:camptocamp/QGIS-SpreadSheetLayers.git SpreadsheetLayers
+cd SpreadsheetLayers
+ln -s ${PWD}/SpreadsheetLayers ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+make
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>Corre QGIS y activa la herramienta SpreadsheetLayers</p></li>
+</ul>
+</section>
+<section id="release-a-new-version">
+<h2>Publicar una nueva versión<a class="headerlink" href="#release-a-new-version" title="Enlazar permanentemente con este título">¶</a></h2>
+<p>Primero actualiza  l10n archivos:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">tx</span><span class="o">-</span><span class="n">pull</span>
+</pre></div>
+</div>
+<p>A continuación crea una confirmación. si fuera relevante</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">add</span> <span class="o">-</span><span class="n">p</span> <span class="o">.</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s1">&#39;Update l10n&#39;</span>
+</pre></div>
+</div>
+<p>Ahora actualiza: código: “El archivo SpreadsheetLayers/metadata.txt” con el número de  la versión</p>
+<p>Para un lanzamiento experimental</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span><span class="o">-</span><span class="n">alpha</span><span class="o">+</span><span class="n">build</span>
+<span class="n">experimental</span><span class="o">=</span><span class="kc">False</span>
+</pre></div>
+</div>
+<p>O para un lanzamiento final</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<span class="n">experimental</span><span class="o">=</span><span class="kc">True</span>
+</pre></div>
+</div>
+<p>Y crea un nuevo registro, etiquétalo y publícalo en Github</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">add</span> <span class="o">-</span><span class="n">p</span> <span class="o">.</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s1">&#39;Release version ...&#39;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">master</span>
+</pre></div>
+</div>
+<p>A continuación crea un paquete, pruébalo con tu QGIS local</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">package</span> <span class="n">deploy</span>
+<span class="n">qgis</span>
+</pre></div>
+</div>
+<p>Luego si se ve bien, puedes crear una etiqueta:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">tag</span> <span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+</pre></div>
+</div>
+<p>Luego, accede al repositorio de herramientas de QGIS: <a class="reference external" href="https://plugins.qgis.org/accounts/login/">https://plugins.qgis.org/accounts/login/</a></p>
+<p>Y carga el archivo: <code class="code docutils literal notranslate"><span class="pre">dist/SpreadsheetLayers.zip</span></code> aquí:</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="#">Tabla de contenido</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">QGIS Capas de hojas de cálculo</a><ul>
+<li><a class="reference internal" href="#description">Descripción</a></li>
+<li><a class="reference internal" href="#limitations">Limitaciones</a></li>
+<li><a class="reference internal" href="#configuration">Configuración</a></li>
+<li><a class="reference internal" href="#development-install-linux">Instalación de Desarrollo (Linux)</a></li>
+<li><a class="reference internal" href="#release-a-new-version">Publicar una nueva versión</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>Esta página</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Mostrar el código</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Búsqueda rápida</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Ir a" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navegación</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="Índice General"
+             >índice</a></li>
+        <li class="nav-item nav-item-0"><a href="#">documentación de SpreadsheetLayers - 1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">QGIS Capas de hojas de cálculo</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Derechos de autor 2015, Arnaud Morvan.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+[general]
+name=Layers menu from project
+about=Allow easy opening of layers maintaining their style.
+description=Build layers shortcuts menus based on QGIS remote projects stored in PostgreSQL, local network or HTTP(S).
+icon=resources/menu_from_project.png
+tags=menu,layers,project,deployment,shared resource,centralized,remote,shortcut
+
+# credits and contact
+author=Xavier Culos (Agence de l'eau Adour Garonne), Etienne Trimaille, Julien M. (Oslandia), Jean-Marie Kerloch (Oslandia)
+email=xavier.culos@eau-adour-garonne.fr
+homepage=https://aeag.github.io/MenuFromProject-Qgis-Plugin/
+repository=https://github.com/aeag/MenuFromProject-Qgis-Plugin
+tracker=https://github.com/aeag/MenuFromProject-Qgis-Plugin/issues
+
+# QGIS integration
+deprecated=False
+experimental=False
+qgisMinimumVersion=3.34
+qgisMaximumVersion=4.99
+supportsQt6=True
+
+# Author contact information
+
+# versioning
+changelog=
+ Version 2.4.2:
+ * fix(ui): restore window's icon and title by @Guts in https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/182
+ * QGIS4 support https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/201
+ * fix: The "add all" option adds layers in reverse order https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/215
+ * fix(cache): Problem if the cache validation file is incorrect https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/184
+ * fix(ui): Use QgsProject icon instead of blank page https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/178
+ * update(docs): cache configuration
+
+ Version 2.4.1:
+ * fix(settings): avoid check of project validity when using plugin settings by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/180>
+ * Docs: update and restructure documentation to fit 2.4+ plugin versions - part 1 by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/179>
+ * fix(tests): use new path to fixtures projects by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/181>
+
+ Version 2.4.0:
+ * (fix): small fixes for project configuration UI by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/163>
+ * Improve: methods naming and docstrings by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/176>
+ * Fix: Qt6 compatibility before releasing 2.4.0 by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/177>
+ * Feat/layer version and format by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/159>
+ * Feat/refactor project configuration widget by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/133>
+ * feat(projet conf): update merge selection by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/161>
+ * feat(menu): always use version for layer action creation by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/162>
+ * add(docs): broadcast project's sponsors by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/160>
+ * feat(browser): add option to define name in browser by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/165>
+ * feat(config UI) : small changes by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/166>
+ * feat(config widget): add stacked widget if no project available by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/167>
+ * feat(conf widget): transform QDialog in QgsOptionsPageWidget by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/168>
+ * feat(project): add new comment parameter for project by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/169>
+ * feat(config dialog): add help button by @jmkerloch in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/170>
+ * UI: homogenize Qt widgets and complete French translation by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/175>
+ * update(docs): add QDT helper by @Guts in <https://github.com/aeag/MenuFromProject-Qgis-Plugin/pull/156>
+
+
+version=2.4.2

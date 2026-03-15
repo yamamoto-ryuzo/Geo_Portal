@@ -1,0 +1,44 @@
+[general]
+name=Lizmap
+qgisMinimumVersion=3.28
+qgisMaximumVersion=3.99
+author=3Liz
+email=info@3liz.com
+description=Publish and share your QGIS maps on the Web via Lizmap Web Client, by 3liz.com
+about=With a few clicks, it's possible to publish and share your QGIS projects on the Web via Lizmap Web Client, by 3liz.com. QGIS Server is used in the background so all the symbology is kept. The edition forms in QGIS are also available. Demo : https://demo.lizmap.com and documentation : https://docs.lizmap.com and hosting solutions https://lizmap.com
+category=Web
+tags=online,server,web,webgis,webservice,webmapping,mobile,publication,wms,wfs,wps,internet,cloud
+
+homepage=https://docs.lizmap.com
+tracker=https://github.com/3liz/lizmap-plugin/issues
+repository=https://github.com/3liz/lizmap-plugin
+
+# Done automatically by qgis-plugin-ci
+version=4.5.3
+commitNumber=1
+commitSha1=33acbc547708a3eaa3c514bb1ebca8bd935ea603
+dateTime=2025-06-27T11:47:23Z
+changelog=
+ Version 4.5.2:
+ * Add check about PostgreSQL raster layer
+ * Add helper about Lizmap Features Table, for Lizmap Web Client 3.9.0
+
+ Version 4.5.1:
+ * Disable checked checkbox for not spatial layers
+ * Add OSM.org URL as "data URL" as well as "attribution URL" in QGIS Server properties
+ * Add link to the QGIS theme online help
+ * Use `represent_value` in some cases in the Drag&Drop layout
+
+ Version 4.5.0:
+ * Raise to minimum QGIS 3.28
+ * Enable lizmap-features-table with a radio button, Lizmap Web Client 3.9
+ * Improve PyQt6 compatibility
+
+
+# End of qgis-plugin-ci
+
+icon=resources/icons/icon.png
+experimental=False
+deprecated=False
+server=False
+supportsQt6=true

@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+    <title>QGIS-SpreadSheetLayers &#8212; документация SpreadsheetLayers 1.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/translations.js"></script>
+    
+    <link rel="index" title="Алфавитный указатель" href="genindex.html" />
+    <link rel="search" title="Поиск" href="search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Навигация</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="Алфавитный указатель"
+             accesskey="I">указатель</a></li>
+        <li class="nav-item nav-item-0"><a href="#">документация SpreadsheetLayers 1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">QGIS-SpreadSheetLayers</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="qgis-spreadsheetlayers">
+<h1>QGIS-SpreadSheetLayers<a class="headerlink" href="#qgis-spreadsheetlayers" title="Ссылка на этот заголовок">¶</a></h1>
+<p>QGIS plugin to load layers from spreadsheet files (*.ods, *.xls, *.xlsx)</p>
+<section id="description">
+<h2>Description<a class="headerlink" href="#description" title="Ссылка на этот заголовок">¶</a></h2>
+<p>This plugin adds a <em>Add spreadsheet layer</em> entry in <em>Layer</em> / <em>Add new Layer</em>
+menu and a corresponding button in <em>Layers</em> toolbar. These two links open the
+same dialog to load a layer from a spreadsheet file with some options:</p>
+<ul class="simple">
+<li><p>select file</p></li>
+<li><p>layer name</p></li>
+<li><p>sheet selection</p></li>
+<li><p>header at first line</p></li>
+<li><p>ignore some rows</p></li>
+<li><p>load geometry from x and y fields</p></li>
+</ul>
+<p>When dialog is accepted, it creates a new GDAL VRT file in same folder as the
+source data file and layer name, expanded with a <em>.vrt</em> suffix, which is
+loaded into QGIS.</p>
+<p>When reusing the same file twice, the dialog loads its values from the
+existing <em>.vrt</em> file.</p>
+</section>
+<section id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Ссылка на этот заголовок">¶</a></h2>
+<p>Due to a GDAL/OGR lacks of functionalities:</p>
+<ul class="simple">
+<li><p>use of header line on a per file basis ;</p></li>
+<li><p>ignore lines at the beginning of file ;</p></li>
+<li><p>correct end of .xls files detection.</p></li>
+</ul>
+<p>The plugin use an SQLITE select statement with offset and limit parameters
+to extract corresponding data from the source file. When one of this
+functionalities is in use, this could have some side effects.</p>
+<p>With GDAL &lt;= 1.11.1, the plugin can’t load geometry. With graceful
+degradation, geometry checkbox is then locked. To get the GDAL version in use,
+run this commands in QGIS python console:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">osgeo.gdal</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">osgeo</span><span class="o">.</span><span class="n">gdal</span><span class="o">.</span><span class="n">__version__</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>When opening a spreadsheet file, GDAL/OGR will try to detect the data type of
+columns (Date, Integer, Real, String, …). This automatic detection occurs
+outside of plugin header and ignore lines functionalities, so when using this,
+GDAL/OGR should be unable to correctly detect data types.</p>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Ссылка на этот заголовок">¶</a></h2>
+<p>GDAL do not allow to define the presence of header line on a per layer basis,
+this choice is made through environment variables for each driver
+<em>OGR_ODS_HEADERS</em>, <em>OGR_XLS_HEADERS</em> and <em>OGR_XLSX_HEADERS</em>,
+with tree possible values <em>FORCE</em>, <em>DISABLE</em> and <em>AUTO</em>.
+For more details, consult the corresponding drivers documentation ie:
+<a class="reference external" href="http://www.gdal.org/drv_ods.html">http://www.gdal.org/drv_ods.html</a>, <a class="reference external" href="http://www.gdal.org/drv_xls.html">http://www.gdal.org/drv_xls.html</a>
+and <a class="reference external" href="http://www.gdal.org/drv_xlsx.html">http://www.gdal.org/drv_xlsx.html</a>.</p>
+<p>You can change this values in QGIS settings:</p>
+<ul>
+<li><p>open <em>Settings</em> / <em>Options</em> dialog;</p></li>
+<li><p>select <em>System</em> tab, and go to <em>Environment</em> section;</p></li>
+<li><p>check <em>Use custom variables</em>.</p></li>
+<li><p>add a new line. Example:</p>
+<blockquote>
+<div><p><em>Overwrite</em> | <em>OGR_ODS_HEADERS</em> | <em>FORCE</em></p>
+</div></blockquote>
+</li>
+<li><p>restart QGIS to take this into consideration.</p></li>
+</ul>
+</section>
+<section id="development-install-linux">
+<h2>Development install (linux)<a class="headerlink" href="#development-install-linux" title="Ссылка на этот заголовок">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>git clone git@github.com:camptocamp/QGIS-SpreadSheetLayers.git SpreadsheetLayers
+cd SpreadsheetLayers
+ln -s ${PWD}/SpreadsheetLayers ~/.local/share/QGIS/QGIS3/profiles/default/python/plugins
+make
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>run QGIS and activate SpreadsheetLayers plugin.</p></li>
+</ul>
+</section>
+<section id="release-a-new-version">
+<h2>Release a new version<a class="headerlink" href="#release-a-new-version" title="Ссылка на этот заголовок">¶</a></h2>
+<p>First update l10n files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">tx</span><span class="o">-</span><span class="n">pull</span>
+</pre></div>
+</div>
+<p>Then create a commit if relevant:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">add</span> <span class="o">-</span><span class="n">p</span> <span class="o">.</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s1">&#39;Update l10n&#39;</span>
+</pre></div>
+</div>
+<p>Now update <code class="code docutils literal notranslate"><span class="pre">SpreadsheetLayers/metadata.txt</span></code> file with the version number.</p>
+<p>For an experimental release:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span><span class="o">-</span><span class="n">alpha</span><span class="o">+</span><span class="n">build</span>
+<span class="n">experimental</span><span class="o">=</span><span class="kc">False</span>
+</pre></div>
+</div>
+<p>Or for a final release:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="o">=</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<span class="n">experimental</span><span class="o">=</span><span class="kc">True</span>
+</pre></div>
+</div>
+<p>And create a new commit, tag, and push on GitHub:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">add</span> <span class="o">-</span><span class="n">p</span> <span class="o">.</span>
+<span class="n">git</span> <span class="n">commit</span> <span class="o">-</span><span class="n">m</span> <span class="s1">&#39;Release version ...&#39;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">master</span>
+</pre></div>
+</div>
+<p>Then create the package and test it with you local QGIS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="n">package</span> <span class="n">deploy</span>
+<span class="n">qgis</span>
+</pre></div>
+</div>
+<p>Then, if everything looks fine, you can create a tag:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">tag</span> <span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">origin</span> <span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
+</pre></div>
+</div>
+<p>Then log in to QGIS plugins repository: <a class="reference external" href="https://plugins.qgis.org/accounts/login/">https://plugins.qgis.org/accounts/login/</a></p>
+<p>And upload the file <code class="code docutils literal notranslate"><span class="pre">dist/SpreadsheetLayers.zip</span></code> here: <a class="reference external" href="https://plugins.qgis.org/plugins/SpreadsheetLayers/">https://plugins.qgis.org/plugins/SpreadsheetLayers/</a></p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="#">Оглавление</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">QGIS-SpreadSheetLayers</a><ul>
+<li><a class="reference internal" href="#description">Description</a></li>
+<li><a class="reference internal" href="#limitations">Limitations</a></li>
+<li><a class="reference internal" href="#configuration">Configuration</a></li>
+<li><a class="reference internal" href="#development-install-linux">Development install (linux)</a></li>
+<li><a class="reference internal" href="#release-a-new-version">Release a new version</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>Эта страница</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/index.rst.txt"
+            rel="nofollow">Исходный текст</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Быстрый поиск</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Искать" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Навигация</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="Алфавитный указатель"
+             >указатель</a></li>
+        <li class="nav-item nav-item-0"><a href="#">документация SpreadsheetLayers 1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">QGIS-SpreadSheetLayers</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015, Arnaud Morvan.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 4.5.0.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,20 @@
+import os
+
+from qgis.core import Qgis, QgsDataItem, QgsMessageLog
+
+from ...kumoy.constants import LOG_CATEGORY
+from ..icons import WARNING_ICON
+
+
+class ErrorItem(QgsDataItem):
+    """Error item for browser to display error messages"""
+
+    def __init__(self, parent, message=""):
+        QgsDataItem.__init__(
+            self, QgsDataItem.Custom, parent=parent, name=message, path=""
+        )
+
+        self.setIcon(WARNING_ICON)
+        QgsMessageLog.logMessage(
+            f"Error item created: {message}", LOG_CATEGORY, Qgis.Warning
+        )
