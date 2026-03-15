@@ -1,3 +1,4 @@
 # Ignore QGIS launcher download files (large files/profiles) from being uploaded to Vercel
 qgis_launcher/download/
 qgis_launcher/download/profiles/geo_custom/
+public/qgis_launcher.zip
