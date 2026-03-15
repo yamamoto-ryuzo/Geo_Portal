@@ -1,5 +1,4 @@
 import { useState } from "react";
-import qgisImg from "./image/qgis.png";
 import { PortalProvider, usePortal } from "../src/PortalContext";
 
 const SERVICES = [
@@ -30,13 +29,13 @@ function Inner() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                  <img src={qgisImg} alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
+                  <img src="/image/qgis.png" alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
                 </div>
     reearthUrl, previewReearth, setPreviewReearth,
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
-  
+
   const TAB_DEFS = {
     reearth: { id: "reearth", label: "Re:Earth", src: SERVICES[0].url },
     googlemap: { id: "googlemap", label: "Googleマップ", src: "https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d12966.99268688849!2d139.7454329!3d35.6585805!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sja!2sjp!4v1631234567890!5m2!1sja!2sjp" },
