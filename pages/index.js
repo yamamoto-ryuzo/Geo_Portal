@@ -32,8 +32,7 @@ function Inner() {
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
                   <img src={qgisImg} alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
                 </div>
-
-              </div>
+    reearthUrl, previewReearth, setPreviewReearth,
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
