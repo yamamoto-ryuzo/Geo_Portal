@@ -25,3 +25,5 @@ yarn-error.log*
 # Rust (QGIS Launcher) build artifacts
 qgis_launcher/target/
 **/*.rs.bk
+public/qgis_launcher.zip
+public/qgis_launcher.zip
