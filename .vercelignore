@@ -1,3 +1,2 @@
 # Ignore QGIS launcher download files (large files/profiles) from being uploaded to Vercel
 qgis_launcher/download/
-public/
