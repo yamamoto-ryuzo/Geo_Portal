@@ -29,6 +29,9 @@ function Inner() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
     reearthUrl, previewReearth, setPreviewReearth,
+              <div style={{ textAlign: "center", marginTop: "20px" }}>
+                <img src="/image/qgis.png" alt="QGIS" style={{ maxWidth: "100%", height: "auto", borderRadius: "6px" }} />
+              </div>
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
