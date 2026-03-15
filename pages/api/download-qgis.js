@@ -3,7 +3,7 @@ import axios from 'axios';
 
 // GitHubリポジトリの情報（※ユーザー自身のPublicリポジトリを対象）
 const GITHUB_OWNER = 'yamamoto-ryuzo';
-const GITHUB_REPO = 'ReEarth_Portal';
+const GITHUB_REPO = 'Geo_Portal';
 const GITHUB_BRANCH = 'main'; // または該当するブランチ名
 // ダウンロード対象のディレクトリパス
 const TARGET_DIR = 'qgis_launcher/download';
