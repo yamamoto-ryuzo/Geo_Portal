@@ -16,6 +16,7 @@ use fltk::enums::Align;
 pub struct QgisSettings {
     pub profile: String,
     pub project_path: String,
+    pub qgis_executable: Option<String>,
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
     pub settings_dir: Option<String>,
@@ -26,6 +27,7 @@ impl Default for QgisSettings {
         Self {
             profile: "".to_string(),
             project_path: "".to_string(),
+            qgis_executable: None,
             reearth_url: None,
             box_url: None,
             settings_dir: Some(r"C:\qgis_launcher".to_string()),
@@ -49,6 +51,10 @@ struct Args {
     /// コマンドラインモードで動作する（指定がなければ GUI を起動）
     #[arg(long, default_value_t = false)]
     cli: bool,
+
+    /// QGISの実行ファイルパス（指定がなければ自動検出）
+    #[arg(long)]
+    qgis_executable: Option<String>,
 }
 
 fn get_settings_path(custom_dir: &str) -> PathBuf {
@@ -197,11 +203,11 @@ fn update_choices(
 }
 
 #[cfg(feature = "gui")]
-fn run_gui(mut args: Args) {
+fn run_gui(args: Args) {
     let app = app::App::default();
 
     // --- ウィンドウ ---
-    let mut wind = window::Window::new(200, 150, 500, 220, "QGIS Launcher");
+    let mut wind = window::Window::new(200, 150, 500, 260, "QGIS Launcher");
     wind.set_color(enums::Color::from_rgb(245, 245, 245));
 
     // --- タイトル ---
@@ -228,8 +234,14 @@ fn run_gui(mut args: Args) {
     project_label.set_label_size(13);
     let mut project_in = misc::InputChoice::new(ix, y2, iw, row_h, "");
 
+    let y3 = y2 + row_h + 14;
+    let mut version_label = frame::Frame::new(lx, y3, lw, row_h, "QGIS Version:");
+    version_label.set_align(Align::Right | Align::Inside);
+    version_label.set_label_size(13);
+    let mut version_in = misc::InputChoice::new(ix, y3, iw, row_h, "");
+
     // --- 区切り線 ---
-    let sep_y = y2 + row_h + 14;
+    let sep_y = y3 + row_h + 14;
     let mut sep = frame::Frame::new(20, sep_y, 460, 2, "");
     sep.set_frame(enums::FrameType::ThinDownBox);
 
@@ -258,17 +270,47 @@ fn run_gui(mut args: Args) {
     profile_in.set_value(&settings.profile);
     project_in.set_value(&settings.project_path);
 
+    let available_versions = get_available_qgis_versions();
+    for (name, _) in &available_versions {
+        version_in.add(name);
+    }
+    
+    if let Some(exe) = &settings.qgis_executable {
+        if let Some((name, _)) = available_versions.iter().find(|(_, path)| path == exe) {
+            version_in.set_value(name);
+        } else {
+            version_in.set_value(exe);
+        }
+    } else if let Some((name, _)) = available_versions.first() {
+        version_in.set_value(name);
+    }
+
     // Launch
     {
         let profile_in = profile_in.clone();
         let project_in = project_in.clone();
+        let version_in = version_in.clone();
         let mut status = status.clone();
+        let available_versions = available_versions.clone();
         launch_btn.set_callback(move |_| {
             let project_val = project_in.value().unwrap_or_default();
             let profile_val = profile_in.value().unwrap_or_default();
+            let version_val = version_in.value().unwrap_or_default();
             
+            let exe_path = available_versions.iter()
+                .find(|(name, _)| name == &version_val)
+                .map(|(_, path)| path.clone())
+                .unwrap_or(version_val.clone());
+
+            // 設定の保存
+            let mut current = get_current_settings(&settings_dir);
+            current.profile = profile_val.clone();
+            current.project_path = project_val.clone();
+            current.qgis_executable = Some(exe_path.clone());
+            let _ = save_settings(&settings_dir, &current);
+
             // GUIから起動ボタンを押された場合は CLI 処理をそのまま実行するのと同様に launch_qgis を呼ぶ
-            launch_qgis(&profile_val, &project_val, &settings_dir);
+            launch_qgis(&profile_val, &project_val, &settings_dir, &exe_path);
             status.set_label("Launch requested.");
         });
     }
@@ -300,8 +342,8 @@ fn main() {
 
     }
 
-
     let settings = get_current_settings(&args.settings_dir);
+    
     let profile_to_use = if !settings.profile.trim().is_empty() {
         settings.profile.clone()
     } else if !args.profile.trim().is_empty() {
@@ -317,11 +359,19 @@ fn main() {
     }
 
     // CLI 起動
+    let qgis_exe = if let Some(exe) = &args.qgis_executable {
+        exe.clone()
+    } else if let Some(exe) = &settings.qgis_executable {
+        exe.clone()
+    } else {
+        "".to_string()
+    };
+
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
-    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir);
+    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe);
 }
 
-fn find_qgis_path() -> Option<String> {
+fn find_qgis_path_from_registry() -> Option<String> {
     println!("レジストリからQGISのパスを検索中...");
     let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
 
@@ -367,7 +417,7 @@ fn find_qgis_path() -> Option<String> {
     }
 }
 
-fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
+fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str, exe_path: &str) {
     let source_profiles = PathBuf::from(settings_dir).join("profiles");
 
     if source_profiles.exists() {
@@ -387,12 +437,16 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str) {
         }
     }
 
-    let qgis_path = match find_qgis_path() {
-        Some(p) => p,
-        None => {
-            eprintln!("QGISの実行ファイルが見つかりませんでした。レジストリの関連付けを確認してください。");
-            return;
+    let qgis_path = if exe_path.is_empty() {
+        match find_qgis_path_from_registry() {
+            Some(p) => p,
+            None => {
+                eprintln!("QGISの実行ファイルが見つかりませんでした。レジストリの関連付けを確認してください。");
+                return;
+            }
         }
+    } else {
+        exe_path.to_string()
     };
 
     let mut cmd = Command::new(&qgis_path);
@@ -467,4 +521,151 @@ fn copy_dir_contents_skip(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+fn get_available_qgis_versions() -> Vec<(String, String)> {
+    let mut versions = Vec::new();
+
+    let default_path = find_qgis_path_from_registry();
+    let mut default_base_dir = None;
+
+    if let Some(p) = &default_path {
+        let pb = PathBuf::from(p);
+        let mut current = pb.as_path();
+        while let Some(parent) = current.parent() {
+            if let Some(name) = current.file_name().and_then(|n| n.to_str()) {
+                if name.to_lowercase().starts_with("qgis") {
+                    default_base_dir = Some(parent.to_path_buf());
+                    break;
+                }
+            }
+            current = parent;
+        }
+    }
+
+    let mut base_dirs_to_check = Vec::new();
+    if let Some(dir) = default_base_dir {
+        base_dirs_to_check.push(dir);
+    }
+    if let Ok(pf) = env::var("ProgramFiles") {
+        let pb = PathBuf::from(pf);
+        if !base_dirs_to_check.contains(&pb) {
+            base_dirs_to_check.push(pb);
+        }
+    }
+    let osgeo4w = PathBuf::from(r"C:\OSGeo4W");
+    if !base_dirs_to_check.contains(&osgeo4w) {
+        base_dirs_to_check.push(osgeo4w);
+    }
+
+    for base_dir in base_dirs_to_check {
+        if let Ok(entries) = fs::read_dir(&base_dir) {
+            for entry in entries.flatten() {
+                if let Ok(ft) = entry.file_type() {
+                    if ft.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        let folder_path = entry.path();
+                        
+                        let lower_name = name.to_lowercase();
+                        if lower_name.starts_with("qgis") {
+                            let bin_dir = folder_path.join("bin");
+                            let bat_path = bin_dir.join("qgis.bat");
+                            let qt6_bat_path = bin_dir.join("qgis-qt6.bat");
+                            let exe_path = bin_dir.join("qgis-bin.exe");
+
+                            if bat_path.exists() {
+                                versions.push((format!("{} (qgis.bat)", name), bat_path.to_string_lossy().to_string()));
+                            }
+                            if qt6_bat_path.exists() {
+                                versions.push((format!("{} (qgis-qt6.bat)", name), qt6_bat_path.to_string_lossy().to_string()));
+                            }
+                            if !bat_path.exists() && !qt6_bat_path.exists() && exe_path.exists() {
+                                versions.push((format!("{} (qgis-bin.exe)", name), exe_path.to_string_lossy().to_string()));
+                            }
+                        } else if lower_name.starts_with("qfield") {
+                            let qfield_exe = folder_path.join("usr").join("bin").join("qfield.exe");
+                            if qfield_exe.exists() {
+                                versions.push((format!("QFieldインストール版 {}", name), qfield_exe.to_string_lossy().to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if let Ok(current_dir) = env::current_dir() {
+        if let Ok(entries) = fs::read_dir(&current_dir) {
+            for entry in entries.flatten() {
+                if let Ok(ft) = entry.file_type() {
+                    if ft.is_dir() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        if name.to_lowercase().starts_with("qgis") {
+                            let osgeo4w_root = entry.path().join("qgis");
+                            let qgis_ltr_bat = osgeo4w_root.join("bin").join("qgis-ltr.bat");
+                            let qgis_bat = osgeo4w_root.join("bin").join("qgis.bat");
+
+                            if qgis_ltr_bat.exists() {
+                                versions.push((format!("ポータブル版 {} (LTR)", name), qgis_ltr_bat.to_string_lossy().to_string()));
+                            }
+                            if qgis_bat.exists() && !qgis_ltr_bat.exists() {
+                                versions.push((format!("ポータブル版 {}", name), qgis_bat.to_string_lossy().to_string()));
+                            }
+                        } else if name.to_lowercase().starts_with("qfield") {
+                            let qfield_exe = entry.path().join("usr").join("bin").join("qfield.exe");
+                            if qfield_exe.exists() {
+                                versions.push((format!("QFieldポータブル版 {}", name), qfield_exe.to_string_lossy().to_string()));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut unique_versions: Vec<(String, String)> = Vec::new();
+    for v in versions {
+        let p = v.1.to_lowercase();
+        if !unique_versions.iter().any(|(_, path)| path.to_lowercase() == p) {
+            unique_versions.push(v);
+        }
+    }
+
+    if let Some(p) = &default_path {
+        let mut found = false;
+        
+        let mut folder_name = String::new();
+        let pb = PathBuf::from(p);
+        let mut current = pb.as_path();
+        while let Some(parent) = current.parent() {
+            if let Some(name) = current.file_name().and_then(|n| n.to_str()) {
+                let lower = name.to_lowercase();
+                if (lower.starts_with("qgis") || lower.starts_with("qfield")) && !lower.ends_with(".bat") && !lower.ends_with(".exe") {
+                    folder_name = name.to_string();
+                    break;
+                }
+            }
+            current = parent;
+        }
+
+        let filename = pb.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        let final_display_name = if !folder_name.is_empty() {
+            format!("{} ({})", folder_name, filename)
+        } else {
+            "システム既定のQGIS".to_string()
+        };
+
+        for (name, path) in &mut unique_versions {
+            if path.to_lowercase() == p.to_lowercase() {
+                *name = format!("{} (システム既定)", final_display_name);
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            unique_versions.insert(0, (format!("{} (システム既定)", final_display_name), p.clone()));
+        }
+    }
+
+    unique_versions
 }
