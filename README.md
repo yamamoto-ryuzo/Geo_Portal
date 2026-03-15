@@ -64,9 +64,9 @@
 
 - 概要: 起動設定（プロファイル/プロジェクトパス）に基づいて QGIS を起動するランチャーです。`qgis_settings.json` を優先して読み込み、存在しない場合は CLI 引数を参照します。
 
-- GUI: 本リリースではデフォルトで FLTK ベースの簡易 GUI (`gui_fltk`) を起動します。GUI では設定の読み込み・保存と QGIS の起動操作が行えます。GUI バイナリが同一フォルダにある場合、`qgis_launcher` 実行時に自動で GUI を起動します。
+- GUI: デフォルトで設定用の簡易 GUI ウィンドウを表示します。GUI ではプルダウンリストからプロファイルやプロジェクトを選択し、「Launch QGIS」ボタンで起動できます。リスト候補には `%APPDATA%` 内のプロファイルや、設定ディレクトリ（デフォルトは `C:\qgis_launcher`）直下・1階層下の `.qgs`/`.qgz` ファイルが自動的に追加されます。
 
-- CLI モード: 必要に応じて従来どおりのコマンドライン挙動で起動したい場合は `--cli` を付けて実行してください。
+- CLI モード: コマンドラインやショートカットから GUI を出さずに即座に起動させたい場合は `--cli` オプションを付けて実行してください。
 
 - 起動優先順: `qgis_settings.json`（`settings_dir` 内、存在すれば）→ コマンドライン `--profile` 引数。
 
@@ -83,14 +83,12 @@
 ```powershell
 cd qgis_launcher
 cargo build --release
-# GUI を直接実行（開発時）
-cargo run --bin gui_fltk
 # ランチャー（デフォルトは GUI を起動）
-cargo run --bin qgis_launcher
-# CLI モードで起動
-cargo run --bin qgis_launcher -- --cli
+cargo run --release
+# CLI モードで即座に起動
+cargo run --release -- --cli
 ```
 
-- 備考: FLTK は `Cargo.toml` 上で `fltk-bundled` を利用する設定になっています（FLTK をソースからバンドルビルド）。ローカルに CMake/FLTK を用意する必要はありませんが、バンドルビルドは時間がかかります。
+- 備考: FLTK は `Cargo.toml` 上で `fltk-bundled` を利用する設定になっています（FLTK をソースからバンドルビルド）。ローカルに CMake/FLTK を用意する必要はありませんが、初回のビルドは時間がかかります。
 
 変更や動作確認が必要であれば教えてください。
