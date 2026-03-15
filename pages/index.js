@@ -7,43 +7,11 @@ const SERVICES = [
 ];
 
 function QgisLaunchButton() {
-  const [status, setStatus] = useState('idle');
-
-  const handleLaunch = async () => {
-    // Local launcher integration removed — show fallback (download) path.
-    setStatus('fallback');
-  };
-
   return (
     <div style={{ marginTop: "20px", padding: "15px", border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "white" }}>
       <h3 style={{ fontSize: "1rem", margin: "0 0 10px 0" }}>ローカルQGIS連携</h3>
       
-      {status === 'idle' || status === 'checking' ? (
-        <button 
-          onClick={handleLaunch} 
-          disabled={status === 'checking'}
-          style={{ width: "100%", padding: "10px", backgroundColor: "#0070f3", color: "white", border: "none", borderRadius: "4px", cursor: status === 'checking' ? "wait" : "pointer" }}
-        >
-          {status === 'checking' ? '通信確認中...' : 'QGISを起動する'}
-        </button>
-      ) : status === 'success' ? (
-        <p style={{ color: "green", fontSize: "0.9rem", margin: 0 }}>✓ QGISを起動しました。</p>
-      ) : (
-        <div>
-          <p style={{ color: "#d97706", fontSize: "0.8rem", margin: "0 0 10px 0" }}>
-            ⚠️ 自動起動できませんでした。（LGWAN環境の可能性があります）
-          </p>
-          <a 
-            href="/downloads/qgis_launcher.exe" 
-            download 
-            style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#10b981", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem", marginBottom: "10px" }}
-          >
-            直接起動用アプリをDL (旧)
-          </a>
-        </div>
-      )}
-
-      <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px dashed #ccc" }}>
+      <div style={{ marginTop: "15px" }}>
         <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "8px" }}>ローカル連携ツール一式の取得はこちら</p>
         <a 
           href="/api/download-qgis" 
