@@ -28,9 +28,6 @@ function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const { 
-                <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                  <img src="/qgis.png" alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
-                </div>
     reearthUrl, previewReearth, setPreviewReearth,
     previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
