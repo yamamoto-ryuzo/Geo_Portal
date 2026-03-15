@@ -62,21 +62,27 @@
 
 ## QGIS Launcher (qgis_launcher)
 
-- 概要: 起動設定（プロファイル/プロジェクトパス/QGIS Version）に基づいて QGIS・QField を起動するランチャーです。`qgis_settings.json` を優先して読み込み、存在しない場合は CLI 引数を参照します。
+- 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
 
-- GUI: デフォルトで設定用の簡易 GUI ウィンドウを表示します。GUI ではプルダウンリストからプロファイル、プロジェクト、QGIS Versionを選択し、「Launch QGIS」ボタンで起動できます。リスト候補には `%APPDATA%` 内のプロファイルや、設定ディレクトリ（デフォルトは `C:\qgis_launcher`）直下・1階層下の `.qgs`/`.qgz` ファイルが自動的に追加されます。また、システム内にインストールされているQGIS・QFieldが自動検出されバージョン選択候補として表示されます。
+- GUI: デフォルトでは簡易 GUI（FLTK）を起動します。GUI はプルダウンでプロファイル、プロジェクト、QGIS バージョンを選択して「Launch QGIS」で起動します。プロファイル候補は `%APPDATA%` 下の QGIS プロファイルパス（`get_qgis_profile_paths()`）と、`settings_dir` 配下の `profiles` フォルダを参照します。プロジェクト候補は `settings_dir` 直下およびその1階層下の `.qgs` / `.qgz` ファイルを列挙します。QGIS / QField の実行ファイル候補はシステム上の標準インストール箇所やポータブル配布を探索して自動検出します。
 
-- CLI モード: コマンドラインやショートカットから GUI を出さずに即座に起動させたい場合は `--cli` オプションを付けて実行してください。
+- CLI モード: `--cli` を指定すると GUI を起動せずに CLI モードで動作します。
 
-- 起動優先順: `qgis_settings.json`（`settings_dir` 内、存在すれば）→ コマンドライン `--profile` 引数。
+- 設定ファイルの探索と優先度:
+	- 指定された `--settings_dir` が存在する場合、まずそのディレクトリ内の `qgis_settings.json` を使用します。
+	- `--settings_dir` が存在しない（またはファイルが無い）場合は、実行ファイルと同階層の `qgis_settings.json` を参照します。
+	- デフォルトの `--settings_dir` 値は `C:\qgis_launcher` です（ただしディレクトリが無ければ上記の実行ファイル同階層を参照します）。
 
-- デフォルト設定ファイル位置: `C:\qgis_launcher\qgis_settings.json`（`--settings_dir` で上書き可）。実行ファイルと同階層に置けばそちらが優先されます。
+- プロファイル選択の優先順位:
+	1. `qgis_settings.json` の `profile` が空でない場合はそれを使用
+	2. そうでなければ CLI の `--profile` 引数
+	3. それでも無ければ `default` を使用
 
-- スタートアップ登録: `qgis_launcher.exe --register_startup` を実行するとスタートアップ用のショートカットが作成されます。作成されるショートカットの引数は次の形式です:
-
-```
---profile <プロファイル名> --settings_dir "<設定ディレクトリのパス>"
-```
+- QGIS 実行ファイルパスの優先順位（重要）:
+	1. CLI 引数 `--qgis_executable`（明示指定）
+	2. `qgis_settings.json` の `qgis_executable` フィールド
+	3. レジストリやファイル関連付けからの自動検出（`find_qgis_path_from_registry()`）
+	4. 見つからない場合はエラーで終了します（実装上、レジストリ検出に失敗すると起動を中止します）。
 
 - ビルド・実行例:
 
@@ -87,8 +93,6 @@ cargo build --release
 cargo run --release
 # CLI モードで即座に起動
 cargo run --release -- --cli
-```
+``` 
 
-- 備考: FLTK は `Cargo.toml` 上で `fltk-bundled` を利用する設定になっています（FLTK をソースからバンドルビルド）。ローカルに CMake/FLTK を用意する必要はありませんが、初回のビルドは時間がかかります。
-
-変更や動作確認が必要であれば教えてください。
+- 備考: `Cargo.toml` は `fltk-bundled` を feature として利用する設定（`gui` feature）になっており、FLTK をソースからバンドルビルドします。初回ビルドは時間がかかる点に注意してください。
