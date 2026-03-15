@@ -296,6 +296,9 @@ function Inner() {
                     placeholder="C:\Users\...\Desktop\project.qgs"
                   />
                 </div>
+                <div style={{ textAlign: "center", marginTop: "20px" }}>
+                  <img src="/image/qgis.png" alt="QGIS" style={{ maxWidth: "100%", height: "auto", borderRadius: "6px" }} />
+                </div>
               </div>
 
             </div>
