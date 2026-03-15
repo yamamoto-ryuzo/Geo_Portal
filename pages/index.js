@@ -17,7 +17,7 @@ function QgisLaunchButton() {
           download 
           style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#4b5563", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
         >
-          QGISカスタムツール一式をZIPでDL
+          QGISカスタムツール一式を<br />ZIPでDL
         </a>
       </div>
     </div>
