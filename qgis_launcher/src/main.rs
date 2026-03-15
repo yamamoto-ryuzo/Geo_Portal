@@ -41,6 +41,9 @@ struct Args {
     /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス
     #[arg(long, default_value = r"C:\qgis_launcher")]
     settings_dir: String,
+    /// コマンドラインモードで動作する（指定がなければ GUI を起動）
+    #[arg(long, default_value_t = false)]
+    cli: bool,
 }
 
 fn get_settings_path(custom_dir: &str) -> PathBuf {
@@ -96,6 +99,28 @@ fn main() {
     } else {
         args.profile.clone()
     };
+
+    // デフォルトは GUI を起動。`--cli` が指定されている場合は従来の CLI 動作を行う。
+    if !args.cli {
+        // 実行ファイルと同じディレクトリに `gui_fltk.exe` があればそれを起動して終了する
+        if let Ok(mut exe_path) = env::current_exe() {
+            if let Some(parent) = exe_path.parent() {
+                let candidate = parent.join("gui_fltk.exe");
+                if candidate.exists() {
+                    match Command::new(candidate).spawn() {
+                        Ok(_) => {
+                            println!("GUI を起動しました。");
+                            return;
+                        }
+                        Err(e) => eprintln!("GUI の起動に失敗しました: {}", e),
+                    }
+                }
+            }
+        }
+
+        // GUI 実行ファイルが見つからない場合は、従来の CLI 動作へフォールバック
+        println!("GUI 実行ファイルが見つからなかったため CLI で起動します...");
+    }
 
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
     launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir);

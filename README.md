@@ -62,9 +62,16 @@
 
 ## QGIS Launcher (qgis_launcher)
 
-- シンプルに起動時に `qgis_settings.json` を参照して QGIS を起動します。
+- 概要: 起動設定（プロファイル/プロジェクトパス）に基づいて QGIS を起動するランチャーです。`qgis_settings.json` を優先して読み込み、存在しない場合は CLI 引数を参照します。
+
+- GUI: 本リリースではデフォルトで FLTK ベースの簡易 GUI (`gui_fltk`) を起動します。GUI では設定の読み込み・保存と QGIS の起動操作が行えます。GUI バイナリが同一フォルダにある場合、`qgis_launcher` 実行時に自動で GUI を起動します。
+
+- CLI モード: 必要に応じて従来どおりのコマンドライン挙動で起動したい場合は `--cli` を付けて実行してください。
+
 - 起動優先順: `qgis_settings.json`（`settings_dir` 内、存在すれば）→ コマンドライン `--profile` 引数。
-- デフォルトの設定ファイル位置: `C:\qgis_launcher\qgis_settings.json`（`--settings_dir` で上書き可）。実行ファイルと同階層に置けばそちらが優先されます。
+
+- デフォルト設定ファイル位置: `C:\qgis_launcher\qgis_settings.json`（`--settings_dir` で上書き可）。実行ファイルと同階層に置けばそちらが優先されます。
+
 - スタートアップ登録: `qgis_launcher.exe --register_startup` を実行するとスタートアップ用のショートカットが作成されます。作成されるショートカットの引数は次の形式です:
 
 ```
@@ -76,39 +83,14 @@
 ```powershell
 cd qgis_launcher
 cargo build --release
-# 直接起動（コマンドライン指定のプロファイルで起動）
-.
-target\release\qgis_launcher.exe --profile geo_custum
+# GUI を直接実行（開発時）
+cargo run --bin gui_fltk
+# ランチャー（デフォルトは GUI を起動）
+cargo run --bin qgis_launcher
+# CLI モードで起動
+cargo run --bin qgis_launcher -- --cli
 ```
+
+- 備考: FLTK は `Cargo.toml` 上で `fltk-bundled` を利用する設定になっています（FLTK をソースからバンドルビルド）。ローカルに CMake/FLTK を用意する必要はありませんが、バンドルビルドは時間がかかります。
 
 変更や動作確認が必要であれば教えてください。
-
-### qgis_launcher: 追加ドキュメント（統合内容）
-
-- 必要な環境:
-	- Rust と Cargo（未インストールなら [rustup](https://rustup.rs/) をインストールしてください）
-
-- ビルド方法:
-
-```powershell
-cd qgis_launcher
-cargo build --release
-```
-
-ビルド成功後は `qgis_launcher\target\release\qgis_launcher.exe` が生成されます。生成された `.exe` は単体で動作するため、LGWAN 環境等へ配布可能です。
-
-- 使い方（例）:
-
-直接起動（デフォルトプロファイル）:
-
-```powershell
-.\qgis_launcher.exe
-```
-
-プロファイル指定:
-
-```powershell
-.\qgis_launcher.exe --profile "LGWAN_Profile"
-```
-
-（注）本バージョンでは `qgis_settings.json` か CLI 引数でプロファイルを指定してください。
