@@ -57,8 +57,8 @@
 
 作業で追加・編集した主なファイル: [pages/index.js](pages/index.js#L1-L400)、[src/PortalContext.js](src/PortalContext.js#L1-L200)
 
-必要なら上記の次候補を試作します。どれを優先しますか？
 ---
+
 # QGIS Launcher (qgis_launcher)
 
 - 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
