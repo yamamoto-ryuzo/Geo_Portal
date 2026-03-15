@@ -198,7 +198,7 @@ function Inner() {
           />
 
           {/* 統合設定パネル */}
-          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "flex" : "none", flexDirection: "column", overflow: "auto" }}>
+          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "flex" : "none", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
             <h2 style={{ margin: "0 0 20px 0" }}>ポータル設定</h2>
             
             {/* サブタブナビゲーション */}
@@ -228,7 +228,7 @@ function Inner() {
             </div>
 
             {/* サブタブコンテンツ領域 */}
-            <div style={{ flex: 1, overflow: "auto", paddingRight: "10px" }}>
+            <div style={{ flex: 1, overflow: "auto", paddingRight: "10px", minHeight: 0 }}>
               
               {/* 共通設定 */}
               <div style={{ display: activeSettingsTab === "common" ? "block" : "none" }}>
