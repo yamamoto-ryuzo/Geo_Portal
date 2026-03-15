@@ -136,7 +136,7 @@ function Inner() {
         )}
 
       {/* 右メインエリア: コンテンツ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", minHeight: 0 }}>
         {/* タブ UI (ドラッグで並べ替え可) */}
         <div style={{ display: "flex", borderBottom: "1px solid #ddd", backgroundColor: "#f5f5f5" }}>
           {tabs.map((tabId, idx) => {
@@ -176,7 +176,7 @@ function Inner() {
         </div>
 
         {/* コンテンツ表示エリア */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
           <iframe
             title="Re:Earth Frame"
             src={reearthUrl}
