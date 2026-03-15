@@ -1,4 +1,5 @@
 import { useState } from "react";
+import qgisImg from "./image/qgis.png";
 import { PortalProvider, usePortal } from "../src/PortalContext";
 
 const SERVICES = [
@@ -27,9 +28,9 @@ function QgisLaunchButton() {
 function Inner() {
   const [selectedUrl, setSelectedUrl] = useState(SERVICES[0].url);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { 
+  const {
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
-                  <img src="/qgis.png" alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
+                  <img src={qgisImg} alt="QGIS" style={{ maxWidth: '100%', height: 'auto' }} />
                 </div>
 
               </div>
