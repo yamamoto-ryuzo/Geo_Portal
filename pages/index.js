@@ -36,12 +36,23 @@ function QgisLaunchButton() {
           <a 
             href="/downloads/qgis_launcher.exe" 
             download 
-            style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#10b981", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
+            style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#10b981", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem", marginBottom: "10px" }}
           >
-            直接起動用アプリをDL
+            直接起動用アプリをDL (旧)
           </a>
         </div>
       )}
+
+      <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px dashed #ccc" }}>
+        <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "8px" }}>ローカル連携ツール一式の取得はこちら</p>
+        <a 
+          href="/api/download-qgis" 
+          download 
+          style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#4b5563", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
+        >
+          連携ツール一式をZIPでDL
+        </a>
+      </div>
     </div>
   );
 }
