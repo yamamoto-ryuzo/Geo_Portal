@@ -9,16 +9,15 @@ const SERVICES = [
 function QgisLaunchButton() {
   return (
     <div style={{ marginTop: "20px", padding: "15px", border: "1px solid #ccc", borderRadius: "8px", backgroundColor: "white" }}>
-      <h3 style={{ fontSize: "1rem", margin: "0 0 10px 0" }}>ローカルQGIS連携</h3>
+      <h3 style={{ fontSize: "1rem", margin: "0 0 10px 0" }}>QGIS連携</h3>
       
       <div style={{ marginTop: "15px" }}>
-        <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "8px" }}>ローカル連携ツール一式の取得はこちら</p>
         <a 
           href="https://github.com/yamamoto-ryuzo/Geo_Portal/raw/refs/heads/main/public/qgis_launcher.zip" 
           download 
           style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#4b5563", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
         >
-          連携ツール一式をZIPでDL
+          QGISカスタムツール一式をZIPでDL
         </a>
       </div>
     </div>
