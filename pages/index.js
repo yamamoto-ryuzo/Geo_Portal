@@ -14,8 +14,9 @@ function QgisLaunchButton() {
       <div style={{ marginTop: "15px" }}>
         <p style={{ fontSize: "0.8rem", color: "#666", marginBottom: "8px" }}>ローカル連携ツール一式の取得はこちら</p>
         <a 
-          href="/qgis_launcher.zip" 
-          download 
+          href="https://github.com/yamamoto-ryuzo/Geo_Portal/blob/main/public/qgis_launcher.zip" 
+          target="_blank"
+          rel="noopener noreferrer"
           style={{ display: "block", textAlign: "center", padding: "8px", backgroundColor: "#4b5563", color: "white", textDecoration: "none", borderRadius: "4px", fontSize: "0.9rem" }}
         >
           連携ツール一式をZIPでDL
