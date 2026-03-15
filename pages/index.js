@@ -198,7 +198,7 @@ function Inner() {
           />
 
           {/* 統合設定パネル */}
-          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "flex" : "none", flexDirection: "column", overflow: "hidden" }}>
+          <div style={{ flex: 1, padding: "20px", display: activeTab === "settings" ? "flex" : "none", flexDirection: "column", overflow: "auto" }}>
             <h2 style={{ margin: "0 0 20px 0" }}>ポータル設定</h2>
             
             {/* サブタブナビゲーション */}
