@@ -11,13 +11,11 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     return params.get("EARTH") || params.get("earth") || "";
   }
 
-  // Normalize preview value for project path: if it's empty or contains path characters,
-  // show simple default filename 'ProjectFile.qgs' in the UI input.
-  function normalizePreviewProjectPath(p) {
-    if (!p) return "ProjectFile.qgs";
-    if (typeof p !== "string") return "ProjectFile.qgs";
-    if (p.includes('\\') || p.includes('/') || p.includes(':')) return "ProjectFile.qgs";
-    return p;
+  // project_path は常に string[] として扱う（文字列・null・undefined も正規化）
+  function toProjectPathArray(p) {
+    if (!p) return [];
+    if (Array.isArray(p)) return p;
+    return [p];
   }
 
   // Initialize with provided defaults; read persisted values on client mount.
@@ -54,7 +52,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
 
   const [qgisProjectPath, setQgisProjectPath] = useState(() => {
     const saved = getSavedSettings();
-    return (saved && saved.project_path) || "";
+    return toProjectPathArray(saved && saved.project_path);
   });
 
   const [launcherDir, setLauncherDir] = useState(() => {
@@ -65,7 +63,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
   const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
-  const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(normalizePreviewProjectPath(qgisProjectPath));
+  const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(toProjectPathArray(qgisProjectPath));
   const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
 
   useEffect(() => {
@@ -80,7 +78,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewQgisProfile(qgisProfile);
   }, [qgisProfile]);
   useEffect(() => {
-    setPreviewQgisProjectPath(normalizePreviewProjectPath(qgisProjectPath));
+    setPreviewQgisProjectPath(toProjectPathArray(qgisProjectPath));
   }, [qgisProjectPath]);
   useEffect(() => {
     setPreviewLauncherDir(launcherDir);
@@ -109,8 +107,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       setQgisProfile(data.profile);
     }
     if (data.project_path !== undefined) {
-      setPreviewQgisProjectPath(data.project_path);
-      setQgisProjectPath(data.project_path);
+      const arr = toProjectPathArray(data.project_path);
+      setPreviewQgisProjectPath(arr);
+      setQgisProjectPath(arr);
     }
     if (data.settings_dir) {
       setPreviewLauncherDir(data.settings_dir);
@@ -240,12 +239,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewReearth(reearth || "");
     setPreviewBox(box || "");
     setPreviewQgisProfile("default");
-    setPreviewQgisProjectPath("ProjectFile.qgs");
+    setPreviewQgisProjectPath([]);
     setPreviewLauncherDir("C:\\qgis_launcher");
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
     setQgisProfile("default");
-    setQgisProjectPath("");
+    setQgisProjectPath([]);
     setLauncherDir("C:\\qgis_launcher");
     try {
       localStorage.removeItem('portal:settings');

@@ -70,11 +70,53 @@ fn get_settings_path(custom_dir: &str) -> PathBuf {
     path.join("qgis_settings.json")
 }
 
+/// JSON文字列値内の不正な単一バックスラッシュを \\ に修正する。
+/// Windowsのエクスプローラからコピーしたパス ("C:\foo" 等) に対応。
+fn fix_backslashes_in_json(text: &str) -> String {
+    // JSON文字列リテラルを1つずつ処理し、有効なエスケープ以外の \ を \\ に置換する
+    let mut result = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '"' {
+            result.push(c);
+            continue;
+        }
+        // 文字列リテラルの開始
+        result.push('"');
+        loop {
+            match chars.next() {
+                None => break,
+                Some('"') => { result.push('"'); break; }
+                Some('\\') => {
+                    match chars.peek().copied() {
+                        // 有効な JSON エスケープ: " \ / b f n r t u → 両文字を消費して出力
+                        Some('"') | Some('\\') | Some('/') |
+                        Some('b') | Some('f') | Some('n') | Some('r') | Some('t') | Some('u') => {
+                            let next = chars.next().unwrap();
+                            result.push('\\');
+                            result.push(next);
+                        }
+                        // 無効なエスケープ → \\ に変換（次文字は消費しない）
+                        _ => {
+                            result.push('\\');
+                            result.push('\\');
+                        }
+                    }
+                }
+                Some(other) => { result.push(other); }
+            }
+        }
+    }
+    result
+}
+
 fn get_current_settings(custom_dir: &str) -> QgisSettings {
     let path = get_settings_path(custom_dir);
     if let Ok(data) = fs::read_to_string(path) {
+        // 読み込み時に常にバックスラッシュを事前修正してからパースする。
         // Accept either string or array for `project_path` for backward compatibility.
-        if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&data) {
+        let fixed = fix_backslashes_in_json(&data);
+        if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&fixed) {
             if let Some(p) = v.get("project_path") {
                 if p.is_string() {
                     let s = p.as_str().unwrap_or("");

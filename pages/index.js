@@ -287,13 +287,16 @@ function Inner() {
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイル(.qgs / .qgz)</label>
-                  <input
-                    type="text"
-                    value={previewQgisProjectPath}
-                    onChange={(e) => setPreviewQgisProjectPath(e.target.value)}
-                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                    placeholder="C:\Users\...\Desktop\project.qgs"
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイル / フォルダ (.qgs / .qgz)</label>
+                  <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
+                    1行に1パスを入力してください。ファイルまたはフォルダのパスを指定できます（相対パスは settings_dir 基準）。
+                  </p>
+                  <textarea
+                    value={Array.isArray(previewQgisProjectPath) ? previewQgisProjectPath.join('\n') : (previewQgisProjectPath || '')}
+                    onChange={(e) => setPreviewQgisProjectPath(e.target.value.split('\n'))}
+                    rows={4}
+                    style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px", fontFamily: "monospace", fontSize: "0.9rem", resize: "vertical" }}
+                    placeholder={"ProjectFiles\nC:\\ProjectFiles2\\ProjectFile.qgs"}
                   />
                 </div>
                 <div style={{ textAlign: "center", marginTop: "20px" }}>
