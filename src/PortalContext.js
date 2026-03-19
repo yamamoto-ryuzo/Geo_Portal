@@ -66,6 +66,18 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(toProjectPathArray(qgisProjectPath));
   const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
 
+  // 起動時: localStorage に保存値がなければ /qgis_settings.json を自動フェッチして初期値を適用する
+  useEffect(() => {
+    if (getSavedSettings() !== null) return; // localStorage に値があればスキップ
+    fetch('/qgis_settings.json')
+      .then((res) => res.text())
+      .then((text) => {
+        const data = JSON.parse(text);
+        applyLoadedSettings(data);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     setPreviewReearth(reearthUrl);
   }, [reearthUrl]);

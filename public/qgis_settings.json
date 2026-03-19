@@ -1,0 +1,10 @@
+{
+  "profile": "geo_custom",
+  "project_path": [
+    "ProjectFiles/ProjectFile.qgs"
+  ],
+  "qgis_executable": "",
+  "reearth_url": null,
+  "box_url": null,
+  "settings_dir": "C:\\qgis_launcher"
+}

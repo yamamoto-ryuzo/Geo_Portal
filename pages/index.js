@@ -283,7 +283,7 @@ function Inner() {
                     value={previewQgisProfile}
                     onChange={(e) => setPreviewQgisProfile(e.target.value)}
                     style={{ width: '100%', padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                    placeholder="default"
+                    placeholder="geo_custom"
                   />
                 </div>
                 <div>
