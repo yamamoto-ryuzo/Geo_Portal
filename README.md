@@ -63,6 +63,11 @@
 
 - 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
 
+- `project_path` の配列対応:
+	- `qgis_settings.json` の `project_path` は文字列と配列の両方を読み込めますが、保存や新しい設定では配列（例: `"project_path": ["ProjectFiles/ProjectFile.qgs"]`）を推奨します。
+	- 配列に複数のパスを指定すると、ランチャーは配列要素ごとに QGIS の起動リクエストを行います（GUI からは単一選択を行い、保存時に配列へ変換して保存します）。
+	- フォルダを指定した場合の起動挙動は現在 UI 側で選択動作を補助しますが、起動時にフォルダ内すべてを自動展開して起動するかどうかは設定／実装次第です（既定は配列要素をそのまま解釈して起動）。
+
 - GUI: デフォルトでは簡易 GUI（FLTK）を起動します。GUI はプルダウンでプロファイル、プロジェクト、QGIS バージョンを選択して「Launch QGIS」で起動します。プロファイル候補は `%APPDATA%` 下の QGIS プロファイルパス（`get_qgis_profile_paths()`）と、`settings_dir` 配下の `profiles` フォルダを参照します。プロジェクト候補は `settings_dir` 直下およびその1階層下の `.qgs` / `.qgz` ファイルを列挙します。QGIS / QField の実行ファイル候補はシステム上の標準インストール箇所やポータブル配布を探索して自動検出します。
 
 - CLI モード: `--cli` を指定すると GUI を起動せずに CLI モードで動作します。

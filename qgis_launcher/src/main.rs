@@ -15,7 +15,7 @@ use fltk::enums::Align;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QgisSettings {
     pub profile: String,
-    pub project_path: String,
+    pub project_path: Vec<String>,
     pub qgis_executable: Option<String>,
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
@@ -26,7 +26,7 @@ impl Default for QgisSettings {
     fn default() -> Self {
         Self {
             profile: "".to_string(),
-            project_path: "".to_string(),
+            project_path: Vec::new(),
             qgis_executable: None,
             reearth_url: None,
             box_url: None,
@@ -73,7 +73,19 @@ fn get_settings_path(custom_dir: &str) -> PathBuf {
 fn get_current_settings(custom_dir: &str) -> QgisSettings {
     let path = get_settings_path(custom_dir);
     if let Ok(data) = fs::read_to_string(path) {
-        serde_json::from_str(&data).unwrap_or_else(|_| QgisSettings::default())
+        // Accept either string or array for `project_path` for backward compatibility.
+        if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&data) {
+            if let Some(p) = v.get("project_path") {
+                if p.is_string() {
+                    let s = p.as_str().unwrap_or("");
+                    v["project_path"] = serde_json::Value::Array(vec![serde_json::Value::String(s.to_string())]);
+                }
+            }
+            if let Ok(s) = serde_json::from_value::<QgisSettings>(v) {
+                return s;
+            }
+        }
+        QgisSettings::default()
     } else {
         QgisSettings::default()
     }
@@ -135,10 +147,14 @@ fn get_available_profiles(settings_dir: &str, current_val: &str) -> Vec<String> 
 }
 
 #[cfg(feature = "gui")]
-fn get_available_projects(settings_dir: &str, current_val: &str) -> Vec<String> {
+fn get_available_projects(settings_dir: &str, current_val: &Vec<String>) -> Vec<String> {
     let mut projects = Vec::new();
     if !current_val.is_empty() {
-        projects.push(current_val.to_string());
+        for cv in current_val {
+            if !cv.trim().is_empty() && !projects.contains(cv) {
+                projects.push(cv.clone());
+            }
+        }
     }
     
     let base_dir = PathBuf::from(settings_dir);
@@ -190,7 +206,7 @@ fn update_choices(
     project_in: &mut misc::InputChoice,
     settings_dir: &str,
     current_profile: &str,
-    current_project: &str,
+    current_project: &Vec<String>,
 ) {
     profile_in.clear();
     for p in get_available_profiles(settings_dir, current_profile) {
@@ -268,7 +284,11 @@ fn run_gui(args: Args) {
 
     update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
     profile_in.set_value(&settings.profile);
-    project_in.set_value(&settings.project_path);
+    if !settings.project_path.is_empty() {
+        project_in.set_value(&settings.project_path[0]);
+    } else {
+        project_in.set_value("");
+    }
 
     let available_versions = get_available_qgis_versions();
     for (name, _) in &available_versions {
@@ -305,12 +325,13 @@ fn run_gui(args: Args) {
             // 設定の保存
             let mut current = get_current_settings(&settings_dir);
             current.profile = profile_val.clone();
-            current.project_path = project_val.clone();
+            // Save as array (single-selection from GUI saved as single-element array)
+            current.project_path = vec![project_val.clone()];
             current.qgis_executable = Some(exe_path.clone());
             let _ = save_settings(&settings_dir, &current);
 
-            // GUIから起動ボタンを押された場合は CLI 処理をそのまま実行するのと同様に launch_qgis を呼ぶ
-            launch_qgis(&profile_val, &project_val, &settings_dir, &exe_path);
+            // Call the launcher with an array of project paths
+            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path);
             status.set_label("Launch requested.");
         });
     }
@@ -417,7 +438,7 @@ fn find_qgis_path_from_registry() -> Option<String> {
     }
 }
 
-fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str, exe_path: &str) {
+fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str) {
     let source_profiles = PathBuf::from(settings_dir).join("profiles");
 
     if source_profiles.exists() {
@@ -449,58 +470,64 @@ fn launch_qgis(profile_name: &str, project_path: &str, settings_dir: &str, exe_p
         exe_path.to_string()
     };
 
-    let mut cmd = Command::new(&qgis_path);
-    // QGIS プロセスの作業ディレクトリを実行ファイルのフォルダに設定
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(parent) = exe_path.parent() {
-            cmd.current_dir(parent);
-        }
-    }
-    cmd.arg("--profile").arg(profile_name);
-
-    let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
-        None // 空文字の場合はQGISをプロジェクト無しで起動する
-    } else {
-        // "FolderName - FileName.qgs" 形式で選ばれた場合、もとの相対パスに復元する
-        let real_project_path = if project_path.contains(" - ") {
-            project_path.replace(" - ", "\\")
-        } else {
-            project_path.to_string()
-        };
-
-        let pb = PathBuf::from(&real_project_path);
-        // 既に存在する絶対/相対パスならそれを使う
-        if pb.exists() {
-            Some(pb)
-        } else {
-            // パスが見つからない場合は Settings Dir を基準にした相対パスとして評価する
-            let candidate = PathBuf::from(settings_dir).join(&pb);
-            if candidate.exists() {
-                Some(candidate)
-            } else {
-                // 古いロジックのフォールバック (実行ファイルと同じ階層にある「ファイル名と同名のフォルダ」内を探す)
-                if pb.parent().is_none() {
-                    if let Some(proj_stem) = pb.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
-                        if let Ok(mut exe_path) = env::current_exe() {
-                            exe_path.pop(); // exe のあるフォルダ
-                            let fallback_candidate = exe_path.join(proj_stem).join(&pb);
-                            if fallback_candidate.exists() { Some(fallback_candidate) } else { None }
-                        } else { None }
-                    } else { None }
-                } else { None }
+    // Helper to spawn one process with optional project
+    let spawn_with_project = |maybe_project: Option<PathBuf>| {
+        let mut cmd = Command::new(&qgis_path);
+        // QGIS プロセスの作業ディレクトリを実行ファイルのフォルダに設定
+        if let Ok(exe_path) = env::current_exe() {
+            if let Some(parent) = exe_path.parent() {
+                cmd.current_dir(parent);
             }
+        }
+        cmd.arg("--profile").arg(profile_name);
+        if let Some(p) = maybe_project {
+            if let Some(s) = p.to_str() {
+                cmd.arg(s);
+            }
+        }
+        match cmd.spawn() {
+            Ok(_) => println!("QGISの起動リクエストに成功しました。"),
+            Err(e) => eprintln!("QGISの起動に失敗しました: {}", e),
         }
     };
 
-    if let Some(p) = effective_project {
-        if let Some(s) = p.to_str() {
-            cmd.arg(s);
-        }
+    if project_paths.is_empty() {
+        spawn_with_project(None);
+        return;
     }
 
-    match cmd.spawn() {
-        Ok(_) => println!("QGISの起動リクエストに成功しました。"),
-        Err(e) => eprintln!("QGISの起動に失敗しました: {}", e),
+    for project_path in project_paths {
+        let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
+            None
+        } else {
+            let real_project_path = if project_path.contains(" - ") {
+                project_path.replace(" - ", "\\")
+            } else {
+                project_path.to_string()
+            };
+
+            let pb = PathBuf::from(&real_project_path);
+            if pb.exists() {
+                Some(pb)
+            } else {
+                let candidate = PathBuf::from(settings_dir).join(&pb);
+                if candidate.exists() {
+                    Some(candidate)
+                } else {
+                    if pb.parent().is_none() {
+                        if let Some(proj_stem) = pb.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
+                            if let Ok(mut exe_path) = env::current_exe() {
+                                exe_path.pop();
+                                let fallback_candidate = exe_path.join(proj_stem).join(&pb);
+                                if fallback_candidate.exists() { Some(fallback_candidate) } else { None }
+                            } else { None }
+                        } else { None }
+                    } else { None }
+                }
+            }
+        };
+
+        spawn_with_project(effective_project);
     }
 }
 
