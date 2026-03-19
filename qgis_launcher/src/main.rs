@@ -147,50 +147,79 @@ fn get_available_profiles(settings_dir: &str, current_val: &str) -> Vec<String> 
 }
 
 #[cfg(feature = "gui")]
-fn get_available_projects(settings_dir: &str, current_val: &Vec<String>) -> Vec<String> {
-    let mut projects = Vec::new();
-    if !current_val.is_empty() {
-        for cv in current_val {
-            if !cv.trim().is_empty() && !projects.contains(cv) {
-                projects.push(cv.clone());
-            }
-        }
+/// ファイルの絶対パスから GUI 表示名「親フォルダ名 - ファイル名」を生成する。
+/// ルートレベル（C:\ 直下など）の場合はドライブ文字を親名として使用。
+fn display_name_for(abs_path: &str) -> String {
+    let pb = PathBuf::from(abs_path);
+    let fname = match pb.file_name().and_then(|n| n.to_str()) {
+        Some(s) => s.to_string(),
+        None => return abs_path.to_string(),
+    };
+    let parent = match pb.parent() {
+        Some(p) => p,
+        None => return fname,
+    };
+    // 通常フォルダ: 末尾コンポーネント名を使用
+    if let Some(dir_name) = parent.file_name().and_then(|n| n.to_str()) {
+        return format!("{} - {}", dir_name, fname);
     }
-    
-    let base_dir = PathBuf::from(settings_dir);
-    if let Ok(entries) = fs::read_dir(&base_dir) {
-        for entry in entries.flatten() {
-            if let Ok(ft) = entry.file_type() {
-                if ft.is_file() {
-                    // Check file in Settings Dir directly
-                    if let Ok(name) = entry.file_name().into_string() {
-                        let lower = name.to_lowercase();
-                        if lower.ends_with(".qgs") || lower.ends_with(".qgz") {
-                            if !projects.contains(&name) {
-                                projects.push(name);
-                            }
-                        }
-                    }
-                } else if ft.is_dir() {
-                    // Check 1 level deep inside subdirectories
-                    if let Ok(dir_name) = entry.file_name().into_string() {
-                        if let Ok(sub_entries) = fs::read_dir(entry.path()) {
-                            for sub_entry in sub_entries.flatten() {
-                                if let Ok(sub_ft) = sub_entry.file_type() {
-                                    if sub_ft.is_file() {
-                                        if let Ok(name) = sub_entry.file_name().into_string() {
-                                            let lower = name.to_lowercase();
-                                            if lower.ends_with(".qgs") || lower.ends_with(".qgz") {
-                                                // FLTK のコンボボックスで `/` はサブメニュー判定されるため、見えやすい別の文字「 - 」を使う
-                                                let relative_path = format!("{} - {}", dir_name, name);
-                                                if !projects.contains(&relative_path) {
-                                                    projects.push(relative_path);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+    // ルート（C:\ など）: ドライブ文字を使用
+    let root = parent.to_str().unwrap_or("").trim_end_matches(['/', '\\']);
+    if !root.is_empty() {
+        format!("{} - {}", root, fname)
+    } else {
+        fname
+    }
+}
+
+#[cfg(feature = "gui")]
+/// GUI 用プロジェクト一覧を返す。
+/// 戻り値: (表示名, 実絶対パス) のペアのリスト
+/// - 拡張子 .qgs/.qgz → ファイル指定: 存在すれば1エントリ追加
+/// - それ以外          → フォルダ指定: 直下の .qgs/.qgz を列挙して追加
+fn get_available_projects(settings_dir: &str, current_val: &Vec<String>) -> Vec<(String, String)> {
+    let mut projects: Vec<(String, String)> = Vec::new();
+    let base = PathBuf::from(settings_dir);
+
+    for path_str in current_val {
+        let path_str = path_str.trim();
+        if path_str.is_empty() {
+            continue;
+        }
+
+        let pb = PathBuf::from(path_str);
+        let lower = path_str.to_lowercase();
+        let is_qgis_file = lower.ends_with(".qgs") || lower.ends_with(".qgz");
+
+        // 絶対パスはそのまま、相対パスは settings_dir 基準で解決
+        let effective = if pb.is_absolute() { pb.clone() } else { base.join(&pb) };
+
+        if is_qgis_file {
+            // ファイル指定: 存在すれば追加
+            if effective.is_file() {
+                let actual = effective.to_string_lossy().to_string();
+                let display = display_name_for(&actual);
+                if !projects.iter().any(|(_, a)| a == &actual) {
+                    projects.push((display, actual));
+                }
+            }
+        } else {
+            // フォルダ指定: 直下の .qgs/.qgz を列挙
+            if effective.is_dir() {
+                if let Ok(entries) = fs::read_dir(&effective) {
+                    let mut file_entries: Vec<_> = entries.flatten()
+                        .filter(|e| e.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+                        .filter(|e| {
+                            let name = e.file_name().to_string_lossy().to_lowercase();
+                            name.ends_with(".qgs") || name.ends_with(".qgz")
+                        })
+                        .collect();
+                    file_entries.sort_by_key(|e| e.file_name());
+                    for entry in file_entries {
+                        let actual = effective.join(entry.file_name()).to_string_lossy().to_string();
+                        let display = display_name_for(&actual);
+                        if !projects.iter().any(|(_, a)| a == &actual) {
+                            projects.push((display, actual));
                         }
                     }
                 }
@@ -201,21 +230,24 @@ fn get_available_projects(settings_dir: &str, current_val: &Vec<String>) -> Vec<
 }
 
 #[cfg(feature = "gui")]
+/// コンボボックスを更新し、プロジェクトの (表示名, 実パス) マッピングを返す
 fn update_choices(
     profile_in: &mut misc::InputChoice,
     project_in: &mut misc::InputChoice,
     settings_dir: &str,
     current_profile: &str,
     current_project: &Vec<String>,
-) {
+) -> Vec<(String, String)> {
     profile_in.clear();
     for p in get_available_profiles(settings_dir, current_profile) {
         profile_in.add(&p);
     }
     project_in.clear();
-    for p in get_available_projects(settings_dir, current_project) {
-        project_in.add(&p);
+    let project_map = get_available_projects(settings_dir, current_project);
+    for (display, _) in &project_map {
+        project_in.add(display);
     }
+    project_map
 }
 
 #[cfg(feature = "gui")]
@@ -282,10 +314,33 @@ fn run_gui(args: Args) {
     let settings_dir = args.settings_dir.clone();
     let settings = get_current_settings(&settings_dir);
 
-    update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
+    let project_map = update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
     profile_in.set_value(&settings.profile);
+    // 初期表示: settings.project_path[0] を絶対パスに解決してマップを検索し、
+    // 見つからない場合は display_name_for() で表示名を計算する
     if !settings.project_path.is_empty() {
-        project_in.set_value(&settings.project_path[0]);
+        let first_raw = &settings.project_path[0];
+        let first_pb = PathBuf::from(first_raw);
+        let first_effective = if first_pb.is_absolute() {
+            first_pb.to_string_lossy().to_string()
+        } else {
+            PathBuf::from(&settings_dir).join(first_raw).to_string_lossy().to_string()
+        };
+        let display = project_map.iter()
+            // ファイル指定の完全一致
+            .find(|(_, actual)| *actual == first_effective)
+            .or_else(|| {
+                // フォルダ指定の場合: そのフォルダ配下の最初のエントリを前方一致で探す
+                let prefix_s = format!("{}/",  first_effective.trim_end_matches(['/', '\\']));
+                let prefix_b = format!("{}\\", first_effective.trim_end_matches(['/', '\\']));
+                project_map.iter().find(|(_, actual)| {
+                    actual.starts_with(&prefix_s) || actual.starts_with(&prefix_b)
+                })
+            })
+            .map(|(d, _)| d.clone())
+            // map に存在しない場合（ファイルが存在しない等）は display_name_for で計算
+            .unwrap_or_else(|| display_name_for(&first_effective));
+        project_in.set_value(&display);
     } else {
         project_in.set_value("");
     }
@@ -312,8 +367,10 @@ fn run_gui(args: Args) {
         let version_in = version_in.clone();
         let mut status = status.clone();
         let available_versions = available_versions.clone();
+        // 表示名→実パスのマッピングをクロージャにムーブ
+        let project_map = project_map.clone();
         launch_btn.set_callback(move |_| {
-            let project_val = project_in.value().unwrap_or_default();
+            let project_display = project_in.value().unwrap_or_default();
             let profile_val = profile_in.value().unwrap_or_default();
             let version_val = version_in.value().unwrap_or_default();
             
@@ -322,11 +379,16 @@ fn run_gui(args: Args) {
                 .map(|(_, path)| path.clone())
                 .unwrap_or(version_val.clone());
 
-            // 設定の保存
+            // 表示名から実パスを解決（手入力の場合はそのまま使用）
+            let project_actual = project_map.iter()
+                .find(|(display, _)| display == &project_display)
+                .map(|(_, actual)| actual.clone())
+                .unwrap_or_else(|| project_display.clone());
+
+            // 設定の保存（実パスで保存）
             let mut current = get_current_settings(&settings_dir);
             current.profile = profile_val.clone();
-            // Save as array (single-selection from GUI saved as single-element array)
-            current.project_path = vec![project_val.clone()];
+            current.project_path = vec![project_actual.clone()];
             current.qgis_executable = Some(exe_path.clone());
             let _ = save_settings(&settings_dir, &current);
 
