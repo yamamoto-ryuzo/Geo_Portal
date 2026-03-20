@@ -57,6 +57,8 @@ pub struct QgisSettings {
     /// デフォルト: {"BOX": "%USERPROFILE%\\Box"}
     #[serde(default)]
     pub path_aliases: HashMap<String, String>,
+    /// ユーザーロール: "Viewer" / "Editor" / "Administrator"
+    pub userrole: Option<String>,
 }
 
 impl Default for QgisSettings {
@@ -71,6 +73,7 @@ impl Default for QgisSettings {
             rclone_exe: None,
             rclone_mounts: Vec::new(),
             path_aliases: HashMap::new(),
+            userrole: None,
         }
     }
 }
@@ -449,7 +452,7 @@ fn run_gui(args: Args) {
     let app = app::App::default();
 
     // --- ウィンドウ ---
-    let mut wind = window::Window::new(200, 150, 500, 260, "QGIS Launcher");
+    let mut wind = window::Window::new(200, 150, 500, 302, "QGIS Launcher");
     wind.set_color(enums::Color::from_rgb(245, 245, 245));
 
     // --- タイトル ---
@@ -482,8 +485,17 @@ fn run_gui(args: Args) {
     version_label.set_label_size(13);
     let mut version_in = misc::InputChoice::new(ix, y3, iw, row_h, "");
 
+    let y4 = y3 + row_h + 14;
+    let mut role_label = frame::Frame::new(lx, y4, lw, row_h, "User Role:");
+    role_label.set_align(Align::Right | Align::Inside);
+    role_label.set_label_size(13);
+    let mut role_in = misc::InputChoice::new(ix, y4, iw, row_h, "");
+    role_in.add("Viewer");
+    role_in.add("Editor");
+    role_in.add("Administrator");
+
     // --- 区切り線 ---
-    let sep_y = y3 + row_h + 14;
+    let sep_y = y4 + row_h + 14;
     let mut sep = frame::Frame::new(20, sep_y, 460, 2, "");
     sep.set_frame(enums::FrameType::ThinDownBox);
 
@@ -509,6 +521,7 @@ fn run_gui(args: Args) {
     let settings = get_current_settings(&settings_dir);
 
     let project_map = update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
+    role_in.set_value(settings.userrole.as_deref().unwrap_or("Viewer"));
     profile_in.set_value(&settings.profile);
     // 初期表示: settings.project_path[0] を絶対パスに解決してマップを検索し、
     // 見つからない場合は display_name_for() で表示名を計算する
@@ -559,6 +572,7 @@ fn run_gui(args: Args) {
         let profile_in = profile_in.clone();
         let project_in = project_in.clone();
         let version_in = version_in.clone();
+        let role_in = role_in.clone();
         let _status = status.clone();
         let available_versions = available_versions.clone();
         // 表示名→実パスのマッピングをクロージャにムーブ
@@ -567,6 +581,7 @@ fn run_gui(args: Args) {
             let project_display = project_in.value().unwrap_or_default();
             let profile_val = profile_in.value().unwrap_or_default();
             let version_val = version_in.value().unwrap_or_default();
+            let role_val = role_in.value().unwrap_or_else(|| "Viewer".to_string());
             
             let exe_path = available_versions.iter()
                 .find(|(name, _)| name == &version_val)
@@ -584,10 +599,11 @@ fn run_gui(args: Args) {
             current.profile = profile_val.clone();
             current.project_path = vec![project_actual.clone()];
             current.qgis_executable = Some(exe_path.clone());
+            current.userrole = Some(role_val.clone());
             let _ = save_settings(&settings_dir, &current);
 
             // Call the launcher with an array of project paths
-            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path, &current.rclone_mounts, &current);
+            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path, &current.rclone_mounts, &current, &role_val);
             // QGIS 起動後にランチャーを終了
             std::process::exit(0);
         });
@@ -655,8 +671,9 @@ fn main() {
         "".to_string()
     };
 
+    let userrole = settings.userrole.as_deref().unwrap_or("Viewer").to_string();
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
-    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &settings.rclone_mounts, &settings);
+    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &settings.rclone_mounts, &settings, &userrole);
 }
 
 fn find_qgis_path_from_registry() -> Option<String> {
@@ -1074,7 +1091,7 @@ fn detect_qgis_major_version(qgis_exe: &str) -> Option<u32> {
     None
 }
 
-fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, _rclone_mounts: &[RcloneMount], _settings: &QgisSettings) {
+fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, _rclone_mounts: &[RcloneMount], _settings: &QgisSettings, role: &str) {
     // QGISのパスを決定（プロファイルコピーは EXE 起動時に完了済み）
     let qgis_path = if exe_path.is_empty() {
         match find_qgis_path_from_registry() {
@@ -1098,6 +1115,7 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
             }
         }
         cmd.creation_flags(CREATE_NO_WINDOW);
+        cmd.env("PORTAL_USERROLE", role);
         cmd.arg("--profile").arg(profile_name);
         if let Some(p) = maybe_project {
             if let Some(s) = p.to_str() {
