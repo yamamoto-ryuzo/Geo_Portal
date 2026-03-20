@@ -1,0 +1,98 @@
+# -*- coding: utf-8 -*-
+
+# Form implementation generated from reading ui file 'forms/mmqgis_geometry_import_form.ui'
+#
+# Created by: PyQt5 UI code generator 5.7
+#
+# WARNING! All changes made in this file will be lost!
+
+from PyQt5 import QtCore, QtGui, QtWidgets
+
+class Ui_mmqgis_geometry_import_form(object):
+    def setupUi(self, mmqgis_geometry_import_form):
+        mmqgis_geometry_import_form.setObjectName("mmqgis_geometry_import_form")
+        mmqgis_geometry_import_form.setWindowModality(QtCore.Qt.ApplicationModal)
+        mmqgis_geometry_import_form.setEnabled(True)
+        mmqgis_geometry_import_form.resize(456, 264)
+        mmqgis_geometry_import_form.setMouseTracking(False)
+        self.verticalLayout = QtWidgets.QVBoxLayout(mmqgis_geometry_import_form)
+        self.verticalLayout.setObjectName("verticalLayout")
+        self.label_2 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_2.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft)
+        self.label_2.setObjectName("label_2")
+        self.verticalLayout.addWidget(self.label_2)
+        self.input_csv_name = gui.QgsFileWidget(mmqgis_geometry_import_form)
+        self.input_csv_name.setObjectName("input_csv_name")
+        self.verticalLayout.addWidget(self.input_csv_name)
+        self.gridLayout_2 = QtWidgets.QGridLayout()
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.part_id_field = QtWidgets.QComboBox(mmqgis_geometry_import_form)
+        self.part_id_field.setObjectName("part_id_field")
+        self.gridLayout_2.addWidget(self.part_id_field, 2, 5, 1, 1)
+        self.label = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label.setObjectName("label")
+        self.gridLayout_2.addWidget(self.label, 0, 5, 1, 1)
+        self.label_6 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_6.setObjectName("label_6")
+        self.gridLayout_2.addWidget(self.label_6, 0, 4, 1, 1)
+        self.label_9 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_9.setObjectName("label_9")
+        self.gridLayout_2.addWidget(self.label_9, 0, 3, 1, 1)
+        self.shape_id_field = QtWidgets.QComboBox(mmqgis_geometry_import_form)
+        self.shape_id_field.setObjectName("shape_id_field")
+        self.gridLayout_2.addWidget(self.shape_id_field, 2, 4, 1, 1)
+        self.geometry_type = QtWidgets.QComboBox(mmqgis_geometry_import_form)
+        self.geometry_type.setObjectName("geometry_type")
+        self.gridLayout_2.addWidget(self.geometry_type, 2, 3, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout_2)
+        self.gridLayout = QtWidgets.QGridLayout()
+        self.gridLayout.setObjectName("gridLayout")
+        self.label_7 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_7.setObjectName("label_7")
+        self.gridLayout.addWidget(self.label_7, 0, 4, 1, 1)
+        self.longitude_field = QtWidgets.QComboBox(mmqgis_geometry_import_form)
+        self.longitude_field.setObjectName("longitude_field")
+        self.gridLayout.addWidget(self.longitude_field, 1, 4, 1, 1)
+        self.label_8 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_8.setObjectName("label_8")
+        self.gridLayout.addWidget(self.label_8, 0, 3, 1, 1)
+        self.latitude_field = QtWidgets.QComboBox(mmqgis_geometry_import_form)
+        self.latitude_field.setObjectName("latitude_field")
+        self.gridLayout.addWidget(self.latitude_field, 1, 3, 1, 1)
+        self.verticalLayout.addLayout(self.gridLayout)
+        self.label_10 = QtWidgets.QLabel(mmqgis_geometry_import_form)
+        self.label_10.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft)
+        self.label_10.setObjectName("label_10")
+        self.verticalLayout.addWidget(self.label_10)
+        self.output_file_name = gui.QgsFileWidget(mmqgis_geometry_import_form)
+        self.output_file_name.setObjectName("output_file_name")
+        self.verticalLayout.addWidget(self.output_file_name)
+        self.status = QtWidgets.QProgressBar(mmqgis_geometry_import_form)
+        self.status.setProperty("value", 24)
+        self.status.setObjectName("status")
+        self.verticalLayout.addWidget(self.status)
+        self.buttonBox = QtWidgets.QDialogButtonBox(mmqgis_geometry_import_form)
+        self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Apply|QtWidgets.QDialogButtonBox.Close)
+        self.buttonBox.setCenterButtons(True)
+        self.buttonBox.setObjectName("buttonBox")
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.retranslateUi(mmqgis_geometry_import_form)
+        self.buttonBox.accepted.connect(mmqgis_geometry_import_form.accept)
+        self.buttonBox.rejected.connect(mmqgis_geometry_import_form.reject)
+        QtCore.QMetaObject.connectSlotsByName(mmqgis_geometry_import_form)
+
+    def retranslateUi(self, mmqgis_geometry_import_form):
+        _translate = QtCore.QCoreApplication.translate
+        mmqgis_geometry_import_form.setWindowTitle(_translate("mmqgis_geometry_import_form", "Geometry Import from CSV File"))
+        self.label_2.setText(_translate("mmqgis_geometry_import_form", "Input CSV Nodes File"))
+        self.label.setText(_translate("mmqgis_geometry_import_form", "Part ID Field"))
+        self.label_6.setText(_translate("mmqgis_geometry_import_form", "Shape ID Field"))
+        self.label_9.setText(_translate("mmqgis_geometry_import_form", "Geometry Type"))
+        self.label_7.setText(_translate("mmqgis_geometry_import_form", "Longitude Field"))
+        self.label_8.setText(_translate("mmqgis_geometry_import_form", "Latitude Field"))
+        self.label_10.setText(_translate("mmqgis_geometry_import_form", "Output File Name"))
+        self.output_file_name.setFilter(_translate("mmqgis_geometry_import_form", "Shapefile (*.shp)"))
+
+from qgis import gui

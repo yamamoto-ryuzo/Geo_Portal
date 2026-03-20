@@ -1,0 +1,39 @@
+[general]
+name=Lizmap
+qgisMinimumVersion=3.28
+qgisMaximumVersion=3.99
+author=3Liz
+email=info@3liz.com
+description=Publish and share your QGIS maps on the Web via Lizmap Web Client, by 3liz.com
+about=With a few clicks, it's possible to publish and share your QGIS projects on the Web via Lizmap Web Client, by 3liz.com. QGIS Server is used in the background so all the symbology is kept. The edition forms in QGIS are also available. Demo : https://demo.lizmap.com and documentation : https://docs.lizmap.com and hosting solutions https://lizmap.com
+category=Web
+tags=online,server,web,webgis,webservice,webmapping,mobile,publication,wms,wfs,wps,internet,cloud
+
+homepage=https://docs.lizmap.com
+tracker=https://github.com/3liz/lizmap-plugin/issues
+repository=https://github.com/3liz/lizmap-plugin
+
+# Done automatically by qgis-plugin-ci
+version=4.5.9
+commitNumber=1
+commitSha1=2129f9ec55b1f41c726ba506feaebbf196fd087b
+dateTime=2026-03-09T10:50:51Z
+changelog=
+ Version 4.5.9:
+ * Increase maximum value from 999 to 9999 for the popup maximum features
+
+ Version 4.5.8:
+ * Fix: A vector layer can be spatial but having symbology disabled
+ * Fix Project checker - non int4 pkey: Raise warning only for PostgreSQL layers
+
+ Version 4.5.7:
+ * Fix Check either non-existing PK or PK different from int4
+
+
+# End of qgis-plugin-ci
+
+icon=resources/icons/icon.png
+experimental=False
+deprecated=False
+server=False
+supportsQt6=true
