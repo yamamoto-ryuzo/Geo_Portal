@@ -143,7 +143,9 @@ cargo run --release -- --cli
 QGIS 起動前に任意のフォルダをドライブレターへ自動割り当てする機能です。
 追加インストール不要の `subst` モードを採用しています。
 
-### ドライブ構成と役割
+**対応クラウドストレージ**: BOX Drive / OneDrive / Google Drive for Desktop など、ローカルフォルダとして同期されるすべてのクラウドストレージに対応します。
+
+### ドライブ構成と役割（BOX の例）
 
 ```
 BOX Drive (BOX:\Geo_Portal = %USERPROFILE%\Box\Geo_Portal)
@@ -179,7 +181,10 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
 ```json
 {
   "path_aliases": {
-    "BOX": "%USERPROFILE%\\Box"
+    "BOX": "%USERPROFILE%\\Box",
+    "OneDrive": "%OneDrive%",
+    "OneDriveBiz": "%OneDriveCommercial%",
+    "GoogleDrive": "G:\\マイドライブ"
   },
   "rclone_mounts": [
     {
@@ -206,18 +211,30 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
 | `robocopy_src` | 指定時は起動時に `robocopy /MIR` で `local_cache` へミラーリング（`BOX:\\path` ・ `%VAR%` 記法対応）。**コピー方向は `robocopy_src` → `local_cache` の一方向** |
 | `robocopy_exclude` | robocopy の除外サブフォルダ名の配列（例: `["secret-folder", "private-data"]`）|
 
-`path_aliases` ではエイリアス名（2文字以上）をパスにマッピングできます。`BOX` は未定義時のデフォルトで `%USERPROFILE%\Box` に解決されます。
+`path_aliases` ではエイリアス名（2文字以上）をパスにマッピングできます。`BOX` は未定義時のデフォルトで `%USERPROFILE%\Box` に解決されます。OneDrive / Google Drive 等も同様に定義できます。
 
 | 記法例 | 展開後 |
 |---|---|
-| `BOX:\Geo_Portal` | `C:\Users\<ユーザ>\Box\Geo_Portal` |
+| `BOX:\Geo_Portal` | `C:\Users\<ユーザ>\Box\Geo_Portal`（`BOX` エイリアス展開） |
+| `OneDrive:\Documents` | `C:\Users\<ユーザ>\OneDrive\Documents`（`%OneDrive%` 展開） |
+| `OneDriveBiz:\Geo_Portal` | `C:\Users\<ユーザ>\OneDrive - 会社名\Geo_Portal`（`%OneDriveCommercial%` 展開） |
+| `GoogleDrive:\Geo_Portal` | `G:\マイドライブ\Geo_Portal`（Google Drive のドライブレターを指定） |
 | `%USERPROFILE%\Box\Geo_Portal` | `C:\Users\<ユーザ>\Box\Geo_Portal` |
 | `C:\qgis_cache\master` | そのまま |
 
 ### 事前準備
 
-- **BOX Drive アプリ**をインストールし、対象フォルダをオフライン同期（常にこのデバイス上に保持）に設定してください。
+**使用するクラウドストレージに応じて以下を設定してください。**
+
+| クラウド | 準備 | エイリアスの基準 |
+|---|---|---|
+| **BOX Drive** | BOX Drive アプリをインストール、対象フォルダをオフライン同期（常にこのデバイス上に保持）に設定 | `%USERPROFILE%\Box`（デフォルト、または `path_aliases` で変更） |
+| **OneDrive（個人）** | OneDrive アプリが動作していれば `%OneDrive%` 環境変数が自動設定される | `%OneDrive%` |
+| **OneDrive（法人/Microsoft 365）** | サインイン後に `%OneDriveCommercial%` 環境変数が自動設定される | `%OneDriveCommercial%` |
+| **Google Drive for Desktop** | Google Drive for Desktop をインストール、ドライブレター（例: `G:`）を確認 | `G:\マイドライブ`（ドライブレターは環境により異なるため `path_aliases` で指定） |
+
 - Q: の `local_cache`（`C:\qgis_cache\master` 等）は初回起動時に自動作成されます。
+- OneDrive は会社名がパスに含まれる（例: `OneDrive - 株式会社XXX`）ため、ユーザーごとにパスが異なる場合があります。その場合は[ユーザーオーバーライド](#ユーザーごとの設定オーバーライドqgis_settingsusername.json)で `path_aliases` を上書きしてください。
 
 ---
 
