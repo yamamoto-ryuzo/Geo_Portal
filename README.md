@@ -221,6 +221,58 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
 
 ---
 
+## ユーザーごとの設定オーバーライド（qgis_settings_{USERNAME}.json）
+
+BOX のフォルダ階層はユーザーによって異なる場合があります。`qgis_settings.json` と同じディレクトリに `qgis_settings_{Windowsログイン名}.json` を置くと、全員共通のベース設定を上書きできます。
+
+### ファイル命名規則
+
+```
+C:\qgis_launcher\
+  qgis_settings.json              ← 全員共通のベース設定
+  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き
+  qgis_settings_tanaka.json       ← tanaka ユーザーのみ上書き
+```
+
+`{USERNAME}` は Windows の `%USERNAME%` 環境変数（ログインユーザー名）と一致させてください。
+
+### マージ動作
+
+| キー | マージ方式 |
+|---|---|
+| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドはベースを維持） |
+| `path_aliases` | マップキー単位でマージ（未指定キーはベースを維持） |
+| その他のキー | 値ごと置き換え |
+
+### オーバーライドファイルの例
+
+`robocopy_src` だけを変えたい場合（他のフィールドはベースのまま）:
+
+```json
+{
+  "rclone_mounts": [
+    {
+      "drive": "Q:",
+      "robocopy_src": "BOX:\\MyFolder\\Geo_Portal"
+    }
+  ]
+}
+```
+
+`path_aliases` の BOX パスだけをユーザーごとに変えたい場合:
+
+```json
+{
+  "path_aliases": {
+    "BOX": "D:\\Box"
+  }
+}
+```
+
+サンプルファイル: [qgis_launcher/download/qgis_settings_USERNAME.json.example](qgis_launcher/download/qgis_settings_USERNAME.json.example)
+
+---
+
 ## ライセンス
 
 ### このリポジトリ（ReEarth_Portal / qgis_launcher）

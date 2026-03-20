@@ -150,6 +150,80 @@ fn fix_backslashes_in_json(text: &str) -> String {
     result
 }
 
+/// ユーザーオーバーライド用 JSON ファイルを探して、ベース JSON Value にマージする。
+/// ファイル名: qgis_settings_{USERNAME}.json（例: qgis_settings_yamamoto.json）
+/// 存在しない場合は base をそのまま返す。
+/// マージはシャロー: オーバーライド側のトップレベルキーがベースを上書き。
+fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_json::Value {
+    let username = env::var("USERNAME").unwrap_or_default();
+    if username.is_empty() {
+        return base;
+    }
+    let override_path = PathBuf::from(base_dir).join(format!("qgis_settings_{}.json", username));
+    if !override_path.exists() {
+        return base;
+    }
+    if let Ok(data) = fs::read_to_string(&override_path) {
+        let fixed = fix_backslashes_in_json(&data);
+        if let Ok(override_val) = serde_json::from_str::<serde_json::Value>(&fixed) {
+            if let (Some(base_obj), Some(over_obj)) = (base.as_object_mut(), override_val.as_object()) {
+                for (k, v) in over_obj {
+                    match k.as_str() {
+                        // path_aliases: マップキー単位でマージ（上書き追加、未指定キーは維持）
+                        "path_aliases" => {
+                            if let Some(over_map) = v.as_object() {
+                                let base_map = base_obj
+                                    .entry(k)
+                                    .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
+                                if let Some(bm) = base_map.as_object_mut() {
+                                    for (ak, av) in over_map {
+                                        bm.insert(ak.clone(), av.clone());
+                                    }
+                                }
+                            }
+                        }
+                        // rclone_mounts: drive キーで照合してフィールド単位でマージ
+                        "rclone_mounts" => {
+                            if let Some(over_mounts) = v.as_array() {
+                                let base_mounts = base_obj
+                                    .entry(k)
+                                    .or_insert_with(|| serde_json::Value::Array(vec![]));
+                                if let Some(bm) = base_mounts.as_array_mut() {
+                                    for om in over_mounts {
+                                        let over_drive = om.get("drive").and_then(|d| d.as_str());
+                                        if let Some(drive) = over_drive {
+                                            // 同じ drive を持つベースエントリを探してフィールドマージ
+                                            if let Some(base_entry) = bm.iter_mut().find(|e| {
+                                                e.get("drive").and_then(|d| d.as_str()) == Some(drive)
+                                            }) {
+                                                if let (Some(be), Some(oe)) =
+                                                    (base_entry.as_object_mut(), om.as_object())
+                                                {
+                                                    for (fk, fv) in oe {
+                                                        be.insert(fk.clone(), fv.clone());
+                                                    }
+                                                }
+                                            } else {
+                                                // 新規ドライブは末尾に追加
+                                                bm.push(om.clone());
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        // その他のキーは値ごと置き換え
+                        _ => {
+                            base_obj.insert(k.clone(), v.clone());
+                        }
+                    }
+                }
+            }
+        }
+    }
+    base
+}
+
 fn get_current_settings(custom_dir: &str) -> QgisSettings {
     let path = get_settings_path(custom_dir);
     if let Ok(data) = fs::read_to_string(path) {
@@ -157,6 +231,8 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
         // Accept either string or array for `project_path` for backward compatibility.
         let fixed = fix_backslashes_in_json(&data);
         if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&fixed) {
+            // ユーザーオーバーライドファイルをマージする
+            v = apply_user_override(custom_dir, v);
             if let Some(p) = v.get("project_path") {
                 if p.is_string() {
                     let s = p.as_str().unwrap_or("");
