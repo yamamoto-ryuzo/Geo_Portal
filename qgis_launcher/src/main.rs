@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
@@ -13,6 +14,29 @@ use fltk::{prelude::*, *};
 use fltk::enums::Align;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RcloneMount {
+    pub remote: Option<String>,
+    pub drive: String,
+    #[serde(default)]
+    pub read_only: bool,
+    /// "subst"（デフォルト）/ "sync" / "mount"
+    pub mode: Option<String>,
+    /// ドライブに割り当てるローカルフォルダ（例: "C:\\qgis_cache\\master"）
+    pub local_cache: Option<String>,
+    /// robocopy のコピー元フォルダ。指定時は subst 前に robocopy を実行
+    pub robocopy_src: Option<String>,
+    /// robocopy で除外するサブフォルダ名のリスト（例: ["secret-folder", "private-data"]）
+    #[serde(default)]
+    pub robocopy_exclude: Vec<String>,
+    // mount モード用オプション
+    pub vfs_cache_mode: Option<String>,
+    pub vfs_cache_max_age: Option<String>,
+    pub vfs_cache_max_size: Option<String>,
+    pub vfs_cache_poll_interval: Option<String>,
+    pub vfs_write_back: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct QgisSettings {
     pub profile: String,
     pub project_path: Vec<String>,
@@ -20,6 +44,13 @@ pub struct QgisSettings {
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
     pub settings_dir: Option<String>,
+    pub rclone_exe: Option<String>,
+    #[serde(default)]
+    pub rclone_mounts: Vec<RcloneMount>,
+    /// パスエイリアス表。キーが "BOX" なら "BOX:\\path" と書ける。
+    /// デフォルト: {"BOX": "%USERPROFILE%\\Box"}
+    #[serde(default)]
+    pub path_aliases: HashMap<String, String>,
 }
 
 impl Default for QgisSettings {
@@ -31,6 +62,9 @@ impl Default for QgisSettings {
             reearth_url: None,
             box_url: None,
             settings_dir: Some(r"C:\qgis_launcher".to_string()),
+            rclone_exe: None,
+            rclone_mounts: Vec::new(),
+            path_aliases: HashMap::new(),
         }
     }
 }
@@ -435,7 +469,7 @@ fn run_gui(args: Args) {
             let _ = save_settings(&settings_dir, &current);
 
             // Call the launcher with an array of project paths
-            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path);
+            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path, &current.rclone_mounts, &current);
             status.set_label("Launch requested.");
         });
     }
@@ -493,7 +527,7 @@ fn main() {
     };
 
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
-    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe);
+    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &settings.rclone_mounts, &settings);
 }
 
 fn find_qgis_path_from_registry() -> Option<String> {
@@ -542,7 +576,304 @@ fn find_qgis_path_from_registry() -> Option<String> {
     }
 }
 
-fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str) {
+/// rclone.exe のパスを解決する。
+/// 検索順:
+///   1. settings.rclone_exe で明示指定されたパス
+///   2. qgis_launcher.exe と同じフォルダ
+///   3. settings_dir（C:\qgis_launcher\ 等）
+///   4. システム PATH
+fn find_rclone_exe(settings: &QgisSettings) -> Option<String> {
+    // 1. 明示指定
+    if let Some(p) = &settings.rclone_exe {
+        let pb = PathBuf::from(p);
+        if pb.is_file() {
+            println!("rclone: 指定パスを使用: {}", p);
+            return Some(p.clone());
+        }
+        eprintln!("rclone: 指定パス '{}' が見つかりません。他の場所を検索します。", p);
+    }
+
+    // 2. qgis_launcher.exe と同じフォルダ
+    if let Ok(exe) = env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            let candidate = parent.join("rclone.exe");
+            if candidate.is_file() {
+                println!("rclone: EXEフォルダから発見: {:?}", candidate);
+                return Some(candidate.to_string_lossy().to_string());
+            }
+        }
+    }
+
+    // 3. settings_dir
+    if let Some(dir) = &settings.settings_dir {
+        let candidate = PathBuf::from(dir).join("rclone.exe");
+        if candidate.is_file() {
+            println!("rclone: settings_dirから発見: {:?}", candidate);
+            return Some(candidate.to_string_lossy().to_string());
+        }
+    }
+
+    // 4. システム PATH
+    if Command::new("rclone").arg("version").output().is_ok() {
+        println!("rclone: システムPATHから使用します。");
+        return Some("rclone".to_string());
+    }
+
+    eprintln!("rclone: rclone.exe が見つかりません。");
+    eprintln!("  → qgis_launcher.exe と同じフォルダか C:\\qgis_launcher\\ に rclone.exe を置いてください。");
+    eprintln!("  → ダウンロード: https://rclone.org/downloads/");
+    None
+}
+
+/// パス文字列内の %VAR_NAME% を環境変数値に展開する（展開後の値にさらに %VAR% が含まれる場合も再展開）
+fn expand_env_vars(s: &str) -> String {
+    let mut result = s.to_string();
+    for _ in 0..10 {
+        let prev = result.clone();
+        let mut output = String::new();
+        let mut i = 0;
+        while i < result.len() {
+            if let Some(start) = result[i..].find('%') {
+                let abs_start = i + start;
+                output.push_str(&result[i..abs_start]);
+                if let Some(end) = result[abs_start + 1..].find('%') {
+                    let abs_end = abs_start + 1 + end;
+                    let var_name = &result[abs_start + 1..abs_end];
+                    let replacement = env::var(var_name)
+                        .unwrap_or_else(|_| format!("%{}%", var_name));
+                    output.push_str(&replacement);
+                    i = abs_end + 1;
+                } else {
+                    output.push_str(&result[abs_start..]);
+                    i = result.len();
+                }
+            } else {
+                output.push_str(&result[i..]);
+                break;
+            }
+        }
+        result = output;
+        if result == prev {
+            break;
+        }
+    }
+    result
+}
+
+/// パスエイリアスを適用した後に環境変数展開を行う。
+/// "BOX:\\path" など 2文字以上のエイリアス名:path 形式を変換する。
+/// エイリアスは settings.path_aliases で定義。
+/// "BOX" が未定義の場合のデフォルト: %USERPROFILE%\Box
+fn resolve_path(s: &str, aliases: &HashMap<String, String>) -> String {
+    // "ALIAS:\\..." または "ALIAS:/..." 形式を検出（2文字以上 = ドライブレターでない）
+    let resolved = if let Some(colon_pos) = s.find(':') {
+        let prefix = &s[..colon_pos];
+        // 単一英字文字（標準ドライブレター）はエイリアスとして扱わない
+        if prefix.len() >= 2 && prefix.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            let alias_upper = prefix.to_uppercase();
+            let alias_root = if let Some(v) = aliases.get(&alias_upper) {
+                v.clone()
+            } else if alias_upper == "BOX" {
+                // BOX のデフォルト: %USERPROFILE%\Box
+                let user_profile = env::var("USERPROFILE").unwrap_or_else(|_| "C:\\Users\\user".to_string());
+                format!("{}\\Box", user_profile)
+            } else {
+                return expand_env_vars(s);
+            };
+            let rest = &s[colon_pos + 1..];
+            let rest = rest.trim_start_matches(['\\', '/']);
+            if rest.is_empty() {
+                alias_root
+            } else {
+                format!("{}\\{}", alias_root.trim_end_matches(['\\', '/']), rest)
+            }
+        } else {
+            s.to_string()
+        }
+    } else {
+        s.to_string()
+    };
+    expand_env_vars(&resolved)
+}
+
+/// rclone_mounts の設定に従って rclone マウント / 同期を起動する。
+fn mount_rclone_drives(mounts: &[RcloneMount], settings: &QgisSettings) {
+    if mounts.is_empty() {
+        return;
+    }
+    let rclone_path = match find_rclone_exe(settings) {
+        Some(p) => p,
+        None => return,
+    };
+    for m in mounts {
+        match m.mode.as_deref().unwrap_or("subst") {
+            "sync"  => sync_drive(m, &rclone_path),
+            "subst" => subst_drive(m, &settings.path_aliases),
+            _       => mount_drive(m, &rclone_path),
+        }
+    }
+}
+
+/// robocopy でコピー元からローカルキャッシュへミラーリング
+fn run_robocopy(src: &str, dst: &str, exclude: &[String], aliases: &HashMap<String, String>) {
+    let src = resolve_path(src, aliases);
+    let dst = resolve_path(dst, aliases);
+    let src = src.as_str();
+    let dst = dst.as_str();
+    if !PathBuf::from(src).exists() {
+        eprintln!("robocopy: コピー元フォルダ '{}' が見つかりません。スキップします。", src);
+        return;
+    }
+    if let Err(e) = fs::create_dir_all(dst) {
+        eprintln!("robocopy: コピー先フォルダ作成失敗 ({}): {}", dst, e);
+        return;
+    }
+    println!("robocopy: {} → {} コピー中...", src, dst);
+    // /MIR: 完全ミラー（削除も反映）, /MT:8: 並列8スレッド, /R:1 /W:0: リトライ省略, /NP: 進捗表示なし
+    let mut cmd = Command::new("robocopy");
+    cmd.args([src, dst, "/MIR", "/MT:8", "/R:1", "/W:0", "/NP"]);
+    // 除外フォルダ /XD フォルダ名...
+    if !exclude.is_empty() {
+        cmd.arg("/XD");
+        for dir in exclude {
+            cmd.arg(dir);
+        }
+    }
+    let status = cmd.status();
+    match status {
+        // robocopy は成功時も exit code 1〜7 を返すため 8 以上をエラーとする
+        Ok(s) => {
+            let code = s.code().unwrap_or(-1);
+            if code < 8 {
+                println!("robocopy: 完了 (exit {})", code);
+            } else {
+                eprintln!("robocopy: エラー終了 (exit {})", code);
+            }
+        }
+        Err(e) => eprintln!("robocopy 起動エラー: {}", e),
+    }
+}
+
+/// subst モード: 指定フォルダをドライブに割り当てる（rclone不要・WinFsp不要）
+fn subst_drive(m: &RcloneMount, aliases: &HashMap<String, String>) {
+    let folder = match &m.local_cache {
+        Some(p) => resolve_path(p, aliases),
+        None => {
+            eprintln!("subst: local_cache の指定が必要です (drive: {})", m.drive);
+            return;
+        }
+    };
+    // robocopy_src が指定されていれば subst の前にミラーリング
+    if let Some(src) = &m.robocopy_src {
+        run_robocopy(src, &folder, &m.robocopy_exclude, aliases);
+    }
+    let check = if m.drive.ends_with(':') { format!("{}\\" , m.drive) } else { m.drive.clone() };
+    if PathBuf::from(&check).exists() {
+        println!("subst: {} は既に割り当て済み。スキップします。", m.drive);
+        return;
+    }
+    if !PathBuf::from(&folder).exists() {
+        eprintln!("subst: フォルダ '{}' が見つかりません。", folder);
+        return;
+    }
+    match Command::new("subst").args([&m.drive, &folder]).status() {
+        Ok(s) if s.success() => println!("subst: {} → {} 割り当て完了", m.drive, folder),
+        Ok(_)  => eprintln!("subst 失敗: {} → {}", m.drive, folder),
+        Err(e) => eprintln!("subst エラー: {}", e),
+    }
+}
+
+/// sync モード: rclone sync（BOX→ローカル）+ subst（WinFsp不要）
+fn sync_drive(m: &RcloneMount, rclone_path: &str) {
+    let cache = match &m.local_cache {
+        Some(p) => p.clone(),
+        None => {
+            eprintln!("rclone: mode=sync の場合 local_cache の指定が必要です (drive: {})", m.drive);
+            return;
+        }
+    };
+    if let Err(e) = fs::create_dir_all(&cache) {
+        eprintln!("キャッシュフォルダ作成失敗 ({}): {}", cache, e);
+        return;
+    }
+    // BOX → ローカルに同期（変更分のみ）
+    let remote = match &m.remote {
+        Some(r) => r.clone(),
+        None => {
+            eprintln!("rclone sync: remote の指定が必要です (drive: {})", m.drive);
+            return;
+        }
+    };
+    println!("rclone sync: {} → {} 同期中（変更分のみ）...", remote, cache);
+    let mut cmd = Command::new(rclone_path);
+    cmd.args(["sync", &remote, &cache]);
+    match cmd.status() {
+        Ok(s) if s.success() => println!("rclone sync: 完了"),
+        Ok(_) => eprintln!("rclone sync: 失敗"),
+        Err(e) => eprintln!("rclone sync エラー: {}", e),
+    }
+    // subst でドライブレターを割り当て（既存なら先に解除）
+    let check = if m.drive.ends_with(':') { format!("{}\\", m.drive) } else { m.drive.clone() };
+    if PathBuf::from(&check).exists() {
+        // 既に同じフォルダが割り当て済みなら再割り当て不要
+        println!("rclone: {} は既に割り当て済みです。", m.drive);
+        return;
+    }
+    match Command::new("subst").args([&m.drive, &cache]).status() {
+        Ok(s) if s.success() => println!("subst: {} → {} 完了", m.drive, cache),
+        Ok(_) => eprintln!("subst 失敗: {} → {}", m.drive, cache),
+        Err(e) => eprintln!("subst エラー: {}", e),
+    }
+}
+
+/// mount モード: rclone mount（WinFsp必要）
+fn mount_drive(m: &RcloneMount, rclone_path: &str) {
+    let check = if m.drive.ends_with(':') { format!("{}\\", m.drive) } else { m.drive.clone() };
+    if PathBuf::from(&check).exists() {
+        println!("rclone: {} は既にマウント済みです。スキップします。", m.drive);
+        return;
+    }
+    let mut cmd = Command::new(rclone_path);
+    let remote = match &m.remote {
+        Some(r) => r.clone(),
+        None => {
+            eprintln!("rclone mount: remote の指定が必要です (drive: {})", m.drive);
+            return;
+        }
+    };
+    cmd.args(["mount", &remote, &m.drive, "--no-console"]);
+    if m.read_only {
+        cmd.arg("--read-only");
+    }
+    if let Some(v) = &m.vfs_cache_mode { cmd.args(["--vfs-cache-mode", v]); }
+    if let Some(v) = &m.vfs_cache_max_age { cmd.args(["--vfs-cache-max-age", v]); }
+    if let Some(v) = &m.vfs_cache_max_size { cmd.args(["--vfs-cache-max-size", v]); }
+    if let Some(v) = &m.vfs_cache_poll_interval { cmd.args(["--vfs-cache-poll-interval", v]); }
+    if let Some(v) = &m.vfs_write_back { cmd.args(["--vfs-write-back", v]); }
+    match cmd.spawn() {
+        Ok(_) => {
+            println!("rclone: {} を {} にマウント開始しました。完了を待機中...", remote, m.drive);
+            let mut mounted = false;
+            for _ in 0..30 {
+                std::thread::sleep(std::time::Duration::from_secs(1));
+                if PathBuf::from(&check).exists() {
+                    println!("rclone: {} のマウント完了。", m.drive);
+                    mounted = true;
+                    break;
+                }
+            }
+            if !mounted {
+                eprintln!("rclone: {} のマウントが30秒以内に完了しませんでした。続行します。", m.drive);
+            }
+        },
+        Err(e) => eprintln!("rclone マウント失敗 ({} -> {}): {}", remote, m.drive, e),
+    }
+}
+
+fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, rclone_mounts: &[RcloneMount], settings: &QgisSettings) {
+    // rclone ドライブマウント（QGIS起動前に実行）
+    mount_rclone_drives(rclone_mounts, settings);
+
     let source_profiles = PathBuf::from(settings_dir).join("profiles");
 
     if source_profiles.exists() {

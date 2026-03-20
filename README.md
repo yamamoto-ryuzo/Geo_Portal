@@ -1,4 +1,4 @@
-# ReEarth_Portal　バージョン: 0.12.0
+# ReEarth_Portal　バージョン: 0.12.1
 
 このリポジトリでは「左パネルは操作／コントロール、右パネルは表示／詳細」を原則とするマスタ詳細パターンを採用しています。
 
@@ -117,3 +117,119 @@ cargo run --release -- --cli
 ``` 
 
 - 備考: `Cargo.toml` は `fltk-bundled` を feature として利用する設定（`gui` feature）になっており、FLTK をソースからバンドルビルドします。初回ビルドは時間がかかる点に注意してください。
+
+---
+
+## クラウドドライブ自動割り当て（rclone_mounts）
+
+QGIS 起動前に任意のフォルダをドライブレターへ自動割り当てする機能です。
+追加インストール不要の `subst` モードを採用しています。
+
+### ドライブ構成と役割
+
+```
+BOX Drive (BOX:\Geo_Portal = %USERPROFILE%\Box\Geo_Portal)
+    │
+    │  robocopy /MIR（起動時に自動実行）
+    │  ← BOX → ローカルの一方向コピー
+    ▼
+ローカルキャッシュ (C:\qgis_cache\master)
+    │
+    │  subst
+    ▼
+  Q:  参照用・高速読み取り専用
+
+BOX Drive (BOX:\Geo_Portal = %USERPROFILE%\Box\Geo_Portal)
+    │
+    │  subst
+    ▼
+  R:  編集用・BOX Drive アプリが BOX へ自動同期
+```
+
+| ドライブ | 書き込み先 | BOX への反映 | 用途 |
+|---|---|---|---|
+| Q: | ローカル SSD | **されない** | QGIS 高速参照専用。起動時に robocopy でキャッシュを最新化 |
+| R: | BOX Drive フォルダ | BOX Drive アプリが自動同期 | データ編集・保存 |
+
+QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\data\道路.gpkg` のように
+ドライブレターで統一でき、チーム全員が同じ `.qgs` ファイルを共有できます。
+
+> **注意**: Q: に直接保存したデータは BOX へ反映されません。編集・保存は R: を使用してください。
+
+### qgis_settings.json の設定例
+
+```json
+{
+  "path_aliases": {
+    "BOX": "%USERPROFILE%\\Box"
+  },
+  "rclone_mounts": [
+    {
+      "drive": "Q:",
+      "mode": "subst",
+      "local_cache": "C:\\qgis_cache\\master",
+      "robocopy_src": "BOX:\\Geo_Portal",
+      "robocopy_exclude": ["secret-folder", "private-data"]
+    },
+    {
+      "drive": "R:",
+      "mode": "subst",
+      "local_cache": "BOX:\\Geo_Portal"
+    }
+  ]
+}
+```
+
+| フィールド | 説明 |
+|---|---|
+| `drive` | 割り当て先ドライブレター（例: `Q:`） |
+| `mode` | `subst`（省略時は `subst`） |
+| `local_cache` | 割り当て元フォルダのパス（必須。`BOX:\\path` ・ `%VAR%` 記法対応） |
+| `robocopy_src` | 指定時は起動時に `robocopy /MIR` で `local_cache` へミラーリング（`BOX:\\path` ・ `%VAR%` 記法対応）。**コピー方向は `robocopy_src` → `local_cache` の一方向** |
+| `robocopy_exclude` | robocopy の除外サブフォルダ名の配列（例: `["secret-folder", "private-data"]`）|
+
+`path_aliases` ではエイリアス名（2文字以上）をパスにマッピングできます。`BOX` は未定義時のデフォルトで `%USERPROFILE%\Box` に解決されます。
+
+| 記法例 | 展開後 |
+|---|---|
+| `BOX:\Geo_Portal` | `C:\Users\<ユーザ>\Box\Geo_Portal` |
+| `%USERPROFILE%\Box\Geo_Portal` | `C:\Users\<ユーザ>\Box\Geo_Portal` |
+| `C:\qgis_cache\master` | そのまま |
+
+### 事前準備
+
+- **BOX Drive アプリ**をインストールし、対象フォルダをオフライン同期（常にこのデバイス上に保持）に設定してください。
+- Q: の `local_cache`（`C:\qgis_cache\master` 等）は初回起動時に自動作成されます。
+
+---
+
+## ライセンス
+
+### このリポジトリ（ReEarth_Portal / qgis_launcher）
+
+MIT License — 詳細は [LICENSE](LICENSE) ファイルを参照してください（未作成の場合は MIT として扱います）。
+
+### 同梱・依存ソフトウェアのライセンス
+
+| ソフトウェア | ライセンス | 配布 | 備考 |
+|---|---|---|---|
+| **FLTK** (fltk-rs) | LGPL v2 + 例外条項 | 同梱可 | スタティックリンク時も再配布可 |
+| **QGIS** | GPL v2 以降 | 別途インストール | qgis_launcher とは独立したソフトウェア |
+
+### 同梱配布する場合のパッケージ構成
+
+```
+配布パッケージの構成例:
+  qgis_launcher.exe
+  qgis_settings.json
+```
+## 免責事項
+
+本システムは個人のPCで作成・テストされたものです。  
+ご利用によるいかなる損害も責任を負いません。  
+
+<p align="center">
+  <a href="https://giphy.com/explore/free-gif" target="_blank">
+    <img src="https://github.com/yamamoto-ryuzo/QGIS_portable_3x/raw/master/imgs/giphy.gif" width="500" title="avvio QGIS">
+  </a>
+</p>
