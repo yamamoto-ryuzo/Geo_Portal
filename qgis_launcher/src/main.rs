@@ -154,7 +154,7 @@ fn fix_backslashes_in_json(text: &str) -> String {
 /// ファイル名: qgis_settings_{USERNAME}.json（例: qgis_settings_yamamoto.json）
 /// 存在しない場合は base をそのまま返す。
 /// マージはシャロー: オーバーライド側のトップレベルキーがベースを上書き。
-fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_json::Value {
+fn apply_user_override(base_dir: &str, base: serde_json::Value) -> serde_json::Value {
     let username = env::var("USERNAME").unwrap_or_default();
     if username.is_empty() {
         return base;
@@ -163,13 +163,30 @@ fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_jso
     if !override_path.exists() {
         return base;
     }
-    if let Ok(data) = fs::read_to_string(&override_path) {
+    apply_override_value(base, &override_path)
+}
+
+/// 無条件オーバーライド用 JSON ファイル（qgis_settings_override.json）を
+/// ユーザー名に関係なく常に適用する。
+/// ユーザーオーバーライド（qgis_settings_{USERNAME}.json）の後に適用されるため、
+/// すべてのユーザー設定を上書きする最終フィルタとして機能する。
+fn apply_force_override(base_dir: &str, base: serde_json::Value) -> serde_json::Value {
+    let override_path = PathBuf::from(base_dir).join("qgis_settings_override.json");
+    if !override_path.exists() {
+        return base;
+    }
+    // apply_user_override と同じマージロジックを再利用
+    apply_override_value(base, &override_path)
+}
+
+/// apply_user_override / apply_force_override 共通のマージ処理
+fn apply_override_value(mut base: serde_json::Value, override_path: &PathBuf) -> serde_json::Value {
+    if let Ok(data) = fs::read_to_string(override_path) {
         let fixed = fix_backslashes_in_json(&data);
         if let Ok(override_val) = serde_json::from_str::<serde_json::Value>(&fixed) {
             if let (Some(base_obj), Some(over_obj)) = (base.as_object_mut(), override_val.as_object()) {
                 for (k, v) in over_obj {
                     match k.as_str() {
-                        // path_aliases: マップキー単位でマージ（上書き追加、未指定キーは維持）
                         "path_aliases" => {
                             if let Some(over_map) = v.as_object() {
                                 let base_map = base_obj
@@ -182,7 +199,6 @@ fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_jso
                                 }
                             }
                         }
-                        // rclone_mounts: drive キーで照合してフィールド単位でマージ
                         "rclone_mounts" => {
                             if let Some(over_mounts) = v.as_array() {
                                 let base_mounts = base_obj
@@ -192,7 +208,6 @@ fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_jso
                                     for om in over_mounts {
                                         let over_drive = om.get("drive").and_then(|d| d.as_str());
                                         if let Some(drive) = over_drive {
-                                            // 同じ drive を持つベースエントリを探してフィールドマージ
                                             if let Some(base_entry) = bm.iter_mut().find(|e| {
                                                 e.get("drive").and_then(|d| d.as_str()) == Some(drive)
                                             }) {
@@ -204,7 +219,6 @@ fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_jso
                                                     }
                                                 }
                                             } else {
-                                                // 新規ドライブは末尾に追加
                                                 bm.push(om.clone());
                                             }
                                         }
@@ -212,7 +226,6 @@ fn apply_user_override(base_dir: &str, mut base: serde_json::Value) -> serde_jso
                                 }
                             }
                         }
-                        // その他のキーは値ごと置き換え
                         _ => {
                             base_obj.insert(k.clone(), v.clone());
                         }
@@ -233,6 +246,8 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
         if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&fixed) {
             // ユーザーオーバーライドファイルをマージする
             v = apply_user_override(custom_dir, v);
+            // 無条件オーバーライドファイルをマージする（常に最後に適用）
+            v = apply_force_override(custom_dir, v);
             if let Some(p) = v.get("project_path") {
                 if p.is_string() {
                     let s = p.as_str().unwrap_or("");

@@ -1,4 +1,13 @@
 # Changelog
+## [0.14.0] - 2026-03-20
+### 追加 (qgis_launcher)
+- 全ユーザー強制オーバーライド機能を追加（`qgis_settings_override.json`）
+  - ユーザー名に関係なく、`qgis_settings_{USERNAME}.json` の適用後に必ず上書きされる最終オーバーライドファイルに対応
+  - マージルールはユーザーオーバーライドと同じ（`rclone_mounts` は `drive` キーで照合、`path_aliases` はキー単位、その他は値ごと置き換え）
+  - `apply_user_override` / `apply_force_override` の共通ロジックを `apply_override_value()` 関数に切り出してリファクタリング
+- サンプルファイル `qgis_settings_override.json.example` を追加
+- README に全ユーザー強制オーバーライドのセクションを追加
+
 ## [0.13.0] - 2026-03-20
 ### 追加
 - クラウドストレージ対応を拡張: OneDrive（個人・法人）/ Google Drive for Desktop を `path_aliases` で利用可能に
