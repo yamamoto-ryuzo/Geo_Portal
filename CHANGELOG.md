@@ -1,4 +1,11 @@
 # Changelog
+## [0.13.0] - 2026-03-20
+### 追加
+- クラウドストレージ対応を拡張: OneDrive（個人・法人）/ Google Drive for Desktop を `path_aliases` で利用可能に
+  - `%OneDrive%`、`%OneDriveCommercial%` 環境変数によるパス解決に対応
+  - Google Drive はドライブレターを `path_aliases` で定義することで利用可能
+- README にクラウドストレージ別の設定例・事前準備手順を追記
+
 ## [0.12.1] - 2026-03-19
 ### 修正 (qgis_launcher)
 - `qgis_settings.json` 読み込み時にバックスラッシュを自動修正する処理を追加
