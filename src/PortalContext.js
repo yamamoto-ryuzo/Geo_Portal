@@ -194,6 +194,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   function save() {
     try {
       const payload = {
+        ...(getSavedSettings() || {}),
         profile: qgisProfile,
         project_path: qgisProjectPath,
         reearth_url: reearthUrl,
@@ -213,6 +214,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   async function applyPreviewAndSave() {
     try {
       const payload = {
+        ...(getSavedSettings() || {}),
         profile: previewQgisProfile,
         project_path: previewQgisProjectPath,
         reearth_url: previewReearth,
@@ -238,6 +240,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   async function saveToFs(filename = "qgis_settings.json") {
     if (typeof window === "undefined") return false;
     const payload = {
+      ...(getSavedSettings() || {}),
       profile: previewQgisProfile,
       project_path: previewQgisProjectPath,
       reearth_url: previewReearth,
