@@ -1,11 +1,17 @@
+#![cfg_attr(feature = "gui", windows_subsystem = "windows")]
+
 use clap::Parser;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+use std::os::windows::process::CommandExt;
 use serde::{Deserialize, Serialize};
 use winreg::enums::*;
+
+/// 子プロセスのコンソールウィンドウを非表示にする Windows フラグ
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 use winreg::RegKey;
 
 #[cfg(feature = "gui")]
@@ -470,7 +476,8 @@ fn run_gui(args: Args) {
 
             // Call the launcher with an array of project paths
             launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path, &current.rclone_mounts, &current);
-            status.set_label("Launch requested.");
+            // QGIS 起動後にランチャーを終了
+            std::process::exit(0);
         });
     }
 
@@ -502,7 +509,17 @@ fn main() {
     }
 
     let settings = get_current_settings(&args.settings_dir);
-    
+
+    // EXE 起動時にドライブ割り当て・robocopy を実行（GUI/CLI 共通）
+    mount_rclone_drives(&settings.rclone_mounts, &settings);
+    // EXE 起動時にインストール済みQGISバージョンを検出してプロファイルをコピー
+    // get_settings_path と同じフォールバックロジックで実際の settings_dir を解決する
+    let resolved_settings_dir = {
+        let p = get_settings_path(&args.settings_dir);
+        p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| args.settings_dir.clone())
+    };
+    copy_profiles_at_startup(&resolved_settings_dir);
+
     let profile_to_use = if !settings.profile.trim().is_empty() {
         settings.profile.clone()
     } else if !args.profile.trim().is_empty() {
@@ -701,6 +718,19 @@ fn mount_rclone_drives(mounts: &[RcloneMount], settings: &QgisSettings) {
     if mounts.is_empty() {
         return;
     }
+    // subst モードは rclone 不要なので先に処理する
+    for m in mounts {
+        if m.mode.as_deref().unwrap_or("subst") == "subst" {
+            subst_drive(m, &settings.path_aliases);
+        }
+    }
+    // sync / mount モードは rclone が必要
+    let needs_rclone = mounts.iter().any(|m| {
+        matches!(m.mode.as_deref().unwrap_or("subst"), "sync" | "mount")
+    });
+    if !needs_rclone {
+        return;
+    }
     let rclone_path = match find_rclone_exe(settings) {
         Some(p) => p,
         None => return,
@@ -708,8 +738,8 @@ fn mount_rclone_drives(mounts: &[RcloneMount], settings: &QgisSettings) {
     for m in mounts {
         match m.mode.as_deref().unwrap_or("subst") {
             "sync"  => sync_drive(m, &rclone_path),
-            "subst" => subst_drive(m, &settings.path_aliases),
-            _       => mount_drive(m, &rclone_path),
+            "mount" => mount_drive(m, &rclone_path),
+            _ => {}  // subst は上で処理済み
         }
     }
 }
@@ -731,6 +761,7 @@ fn run_robocopy(src: &str, dst: &str, exclude: &[String], aliases: &HashMap<Stri
     println!("robocopy: {} → {} コピー中...", src, dst);
     // /MIR: 完全ミラー（削除も反映）, /MT:8: 並列8スレッド, /R:1 /W:0: リトライ省略, /NP: 進捗表示なし
     let mut cmd = Command::new("robocopy");
+    cmd.creation_flags(CREATE_NO_WINDOW);
     cmd.args([src, dst, "/MIR", "/MT:8", "/R:1", "/W:0", "/NP"]);
     // 除外フォルダ /XD フォルダ名...
     if !exclude.is_empty() {
@@ -776,7 +807,7 @@ fn subst_drive(m: &RcloneMount, aliases: &HashMap<String, String>) {
         eprintln!("subst: フォルダ '{}' が見つかりません。", folder);
         return;
     }
-    match Command::new("subst").args([&m.drive, &folder]).status() {
+    match Command::new("subst").creation_flags(CREATE_NO_WINDOW).args([&m.drive, &folder]).status() {
         Ok(s) if s.success() => println!("subst: {} → {} 割り当て完了", m.drive, folder),
         Ok(_)  => eprintln!("subst 失敗: {} → {}", m.drive, folder),
         Err(e) => eprintln!("subst エラー: {}", e),
@@ -870,29 +901,69 @@ fn mount_drive(m: &RcloneMount, rclone_path: &str) {
     }
 }
 
-fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, rclone_mounts: &[RcloneMount], settings: &QgisSettings) {
-    // rclone ドライブマウント（QGIS起動前に実行）
-    mount_rclone_drives(rclone_mounts, settings);
-
-    let source_profiles = PathBuf::from(settings_dir).join("profiles");
-
-    if source_profiles.exists() {
-        let profiles_paths = qgis_launcher::get_qgis_profile_paths();
-        for profiles_path in &profiles_paths {
-            if !profiles_path.exists() {
-                if let Err(e) = fs::create_dir_all(&profiles_path) {
-                    eprintln!("profiles フォルダ作成失敗 ({:?}): {}", profiles_path, e);
-                    continue;
-                }
-            }
-
-            // 既存 profiles は削除せず、設定側のファイルを上書きせずに追加する
-            if let Err(e) = copy_dir_contents_skip(&source_profiles, &profiles_path) {
-                eprintln!("profiles のコピーに失敗しました ({:?}): {}", profiles_path, e);
-            }
-        }
+/// EXE 起動時: インストール済みQGISのバージョンを検出し、対応するプロファイルフォルダをコピーする
+/// profiles\QGIS3\ → APPDATA\QGIS\QGIS3\
+/// profiles\QGIS4\ → APPDATA\QGIS\QGIS4\
+/// バージョン別フォルダが無い場合は profiles\ 直下を共通フォルダとして使用
+fn copy_profiles_at_startup(settings_dir: &str) {
+    let base_profiles = PathBuf::from(settings_dir).join("profiles");
+    if !base_profiles.exists() {
+        return;
     }
 
+    // インストール済みQGISのメジャーバージョンを収集
+    let installed = get_available_qgis_versions();
+    let mut major_versions: Vec<u32> = installed.iter()
+        .filter_map(|(_, exe)| detect_qgis_major_version(exe))
+        .collect();
+    major_versions.sort();
+    major_versions.dedup();
+
+    if major_versions.is_empty() {
+        return;
+    }
+
+    let all_profile_paths = qgis_launcher::get_qgis_profile_paths();
+    for major in &major_versions {
+        let target = all_profile_paths.iter()
+            .find(|p| p.to_string_lossy().to_lowercase().contains(&format!("qgis{}", major)));
+        let target = match target {
+            Some(t) => t,
+            None => continue,
+        };
+        // ソース: profiles\QGIS{major}\ があればそちら、なければ profiles\ 直下
+        let versioned_src = base_profiles.join(format!("QGIS{}", major));
+        let source = if versioned_src.exists() { versioned_src } else { base_profiles.clone() };
+        if !source.exists() {
+            continue;
+        }
+        if let Err(_) = fs::create_dir_all(target) {
+            continue;
+        }
+        let _ = copy_dir_contents_skip(&source, target);
+    }
+}
+
+/// QGISの実行ファイルパスからメジャーバージョン番号（3, 4, ...）を推定する
+fn detect_qgis_major_version(qgis_exe: &str) -> Option<u32> {
+    // パス中の "QGIS 3." "QGIS 4."、"QGIS3." "QGIS4." などを探す
+    let lower = qgis_exe.to_lowercase();
+    // "qgis 3" / "qgis3" / "3." などを順に試す
+    for major in [4u32, 3u32] {
+        let patterns = [
+            format!("qgis {}", major),
+            format!("qgis{}", major),
+            format!("\\{}.\\", major),
+        ];
+        if patterns.iter().any(|p| lower.contains(p.as_str())) {
+            return Some(major);
+        }
+    }
+    None
+}
+
+fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, rclone_mounts: &[RcloneMount], settings: &QgisSettings) {
+    // QGISのパスを決定（プロファイルコピーは EXE 起動時に完了済み）
     let qgis_path = if exe_path.is_empty() {
         match find_qgis_path_from_registry() {
             Some(p) => p,
@@ -914,6 +985,7 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
                 cmd.current_dir(parent);
             }
         }
+        cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.arg("--profile").arg(profile_name);
         if let Some(p) = maybe_project {
             if let Some(s) = p.to_str() {
@@ -1032,16 +1104,20 @@ fn get_available_qgis_versions() -> Vec<(String, String)> {
                         if lower_name.starts_with("qgis") {
                             let bin_dir = folder_path.join("bin");
                             let bat_path = bin_dir.join("qgis.bat");
+                            let ltr_bat_path = bin_dir.join("qgis-ltr.bat");
                             let qt6_bat_path = bin_dir.join("qgis-qt6.bat");
                             let exe_path = bin_dir.join("qgis-bin.exe");
 
                             if bat_path.exists() {
                                 versions.push((format!("{} (qgis.bat)", name), bat_path.to_string_lossy().to_string()));
                             }
+                            if ltr_bat_path.exists() {
+                                versions.push((format!("{} (qgis-ltr.bat)", name), ltr_bat_path.to_string_lossy().to_string()));
+                            }
                             if qt6_bat_path.exists() {
                                 versions.push((format!("{} (qgis-qt6.bat)", name), qt6_bat_path.to_string_lossy().to_string()));
                             }
-                            if !bat_path.exists() && !qt6_bat_path.exists() && exe_path.exists() {
+                            if !bat_path.exists() && !ltr_bat_path.exists() && !qt6_bat_path.exists() && exe_path.exists() {
                                 versions.push((format!("{} (qgis-bin.exe)", name), exe_path.to_string_lossy().to_string()));
                             }
                         } else if lower_name.starts_with("qfield") {

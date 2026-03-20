@@ -7,7 +7,7 @@ pub fn get_qgis_profile_paths() -> Vec<PathBuf> {
     if let Ok(appdata) = env::var("APPDATA") {
         let bases = ["QGIS3", "QGIS4"];
         for base in &bases {
-            paths.push(PathBuf::from(&appdata).join("QGIS").join(base).join("profiles"));
+            paths.push(PathBuf::from(&appdata).join("QGIS").join(base));
         }
     }
     paths
