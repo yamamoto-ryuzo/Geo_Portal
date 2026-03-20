@@ -300,13 +300,34 @@ fn get_available_profiles(settings_dir: &str, current_val: &str) -> Vec<String> 
     }
 
     // 2. settings_dir/profiles (配布・コピー用) のプロファイルを検索する
+    // 構造: profiles/QGIS3/profiles/<プロファイル名>/ または profiles/<プロファイル名>/
     let p = PathBuf::from(settings_dir).join("profiles");
     if p.exists() {
         if let Ok(entries) = fs::read_dir(&p) {
             for entry in entries.flatten() {
                 if let Ok(ft) = entry.file_type() {
                     if ft.is_dir() {
-                        if let Ok(name) = entry.file_name().into_string() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        // QGIS3 / QGIS4 のようなバージョンフォルダ → その中の profiles/ を列挙
+                        let is_version_dir = name.to_uppercase().starts_with("QGIS")
+                            && name[4..].chars().all(|c| c.is_ascii_digit());
+                        if is_version_dir {
+                            let inner = entry.path().join("profiles");
+                            if let Ok(inner_entries) = fs::read_dir(&inner) {
+                                for ie in inner_entries.flatten() {
+                                    if let Ok(ift) = ie.file_type() {
+                                        if ift.is_dir() {
+                                            if let Ok(iname) = ie.file_name().into_string() {
+                                                if !profiles.contains(&iname) {
+                                                    profiles.push(iname);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // バージョンフォルダなし → 直下をプロファイルとして使用
                             if !profiles.contains(&name) {
                                 profiles.push(name);
                             }
@@ -538,7 +559,7 @@ fn run_gui(args: Args) {
         let profile_in = profile_in.clone();
         let project_in = project_in.clone();
         let version_in = version_in.clone();
-        let mut status = status.clone();
+        let _status = status.clone();
         let available_versions = available_versions.clone();
         // 表示名→実パスのマッピングをクロージャにムーブ
         let project_map = project_map.clone();
@@ -1053,7 +1074,7 @@ fn detect_qgis_major_version(qgis_exe: &str) -> Option<u32> {
     None
 }
 
-fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, rclone_mounts: &[RcloneMount], settings: &QgisSettings) {
+fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, _rclone_mounts: &[RcloneMount], _settings: &QgisSettings) {
     // QGISのパスを決定（プロファイルコピーは EXE 起動時に完了済み）
     let qgis_path = if exe_path.is_empty() {
         match find_qgis_path_from_registry() {
