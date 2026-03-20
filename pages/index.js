@@ -29,7 +29,10 @@ function Inner() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
     reearthUrl, previewReearth, setPreviewReearth,
-    previewQgisProfile, previewQgisProjectPath, previewLauncherDir, setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
+    previewQgisProfile, previewQgisProjectPath, previewLauncherDir,
+    previewPathAliases, previewRcloneMounts,
+    setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
+    setPreviewPathAliases, setPreviewRcloneMounts,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
 
@@ -286,7 +289,7 @@ function Inner() {
                     placeholder="geo_custom"
                   />
                 </div>
-                <div>
+                <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイル / フォルダ (.qgs / .qgz)</label>
                   <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
                     1行に1パスを入力してください。ファイルまたはフォルダのパスを指定できます（相対パスは settings_dir 基準）。
@@ -299,6 +302,112 @@ function Inner() {
                     placeholder={"ProjectFiles\nC:\\ProjectFiles2\\ProjectFile.qgs"}
                   />
                 </div>
+
+                {/* BOX パスエイリアス */}
+                <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>📁 BOX パスエイリアス (path_aliases)</h4>
+                  <p style={{ fontSize: '0.82rem', color: '#666', margin: '0 0 12px 0' }}>
+                    <code>BOX:\Geo_Portal</code> のように書いたとき展開されるベースパスを定義します。
+                  </p>
+                  {Object.entries(previewPathAliases || {}).map(([key, val], i) => (
+                    <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        value={key}
+                        onChange={(e) => {
+                          const newKey = e.target.value;
+                          const entries = Object.entries(previewPathAliases);
+                          entries[i] = [newKey, val];
+                          setPreviewPathAliases(Object.fromEntries(entries));
+                        }}
+                        style={{ width: '90px', padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                        placeholder="BOX"
+                      />
+                      <span style={{ color: '#888' }}>→</span>
+                      <input
+                        type="text"
+                        value={val}
+                        onChange={(e) => {
+                          const entries = Object.entries(previewPathAliases);
+                          entries[i] = [key, e.target.value];
+                          setPreviewPathAliases(Object.fromEntries(entries));
+                        }}
+                        style={{ flex: 1, padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.85rem' }}
+                        placeholder="%USERPROFILE%\\Box"
+                      />
+                      <button
+                        onClick={() => {
+                          const entries = Object.entries(previewPathAliases).filter((_, idx) => idx !== i);
+                          setPreviewPathAliases(Object.fromEntries(entries));
+                        }}
+                        style={{ padding: '4px 10px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}
+                      >削除</button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setPreviewPathAliases({ ...previewPathAliases, '': '' })}
+                    style={{ padding: '6px 14px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', marginTop: '4px' }}
+                  >＋ エイリアスを追加</button>
+                </div>
+
+                {/* ドライブ割り当て */}
+                <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>💾 ドライブ割り当て (rclone_mounts)</h4>
+                  <p style={{ fontSize: '0.82rem', color: '#666', margin: '0 0 12px 0' }}>
+                    QGIS起動前に subst でフォルダをドライブレターへ自動割り当てします。
+                  </p>
+                  {(previewRcloneMounts || []).map((mount, i) => (
+                    <div key={i} style={{ background: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                        <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '0.95rem', color: '#1d4ed8' }}>{mount.drive || '(ドライブ未設定)'}</span>
+                        <button
+                          onClick={() => setPreviewRcloneMounts(previewRcloneMounts.filter((_, idx) => idx !== i))}
+                          style={{ padding: '3px 10px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem' }}
+                        >削除</button>
+                      </div>
+                      {[
+                        { field: 'drive', label: 'ドライブ', placeholder: 'Q:' },
+                        { field: 'mode', label: 'モード', placeholder: 'subst' },
+                        { field: 'local_cache', label: 'ローカルパス (local_cache)', placeholder: 'C:\\qgis_cache\\master' },
+                        { field: 'robocopy_src', label: 'コピー元 (robocopy_src) ※省略可', placeholder: 'BOX:\\Geo_Portal' },
+                      ].map(({ field, label, placeholder }) => (
+                        <div key={field} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '7px' }}>
+                          <label style={{ width: '200px', fontSize: '0.83rem', color: '#555', flexShrink: 0 }}>{label}</label>
+                          <input
+                            type="text"
+                            value={mount[field] || ''}
+                            onChange={(e) => {
+                              const updated = [...previewRcloneMounts];
+                              updated[i] = { ...updated[i], [field]: e.target.value };
+                              setPreviewRcloneMounts(updated);
+                            }}
+                            style={{ flex: 1, padding: '5px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem' }}
+                            placeholder={placeholder}
+                          />
+                        </div>
+                      ))}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '7px' }}>
+                        <label style={{ width: '200px', fontSize: '0.83rem', color: '#555', flexShrink: 0, paddingTop: '6px' }}>除外フォルダ (robocopy_exclude)<br /><span style={{ color: '#999', fontSize: '0.78rem' }}>カンマ区切り</span></label>
+                        <input
+                          type="text"
+                          value={(mount.robocopy_exclude || []).join(', ')}
+                          onChange={(e) => {
+                            const updated = [...previewRcloneMounts];
+                            updated[i] = { ...updated[i], robocopy_exclude: e.target.value.split(',').map(s => s.trim()).filter(Boolean) };
+                            setPreviewRcloneMounts(updated);
+                          }}
+                          style={{ flex: 1, padding: '5px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem' }}
+                          placeholder="secret-folder, private-data"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setPreviewRcloneMounts([...(previewRcloneMounts || []), { drive: '', mode: 'subst', local_cache: '', robocopy_src: '', robocopy_exclude: [] }])}
+                    style={{ padding: '6px 14px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', marginTop: '4px' }}
+                  >＋ ドライブを追加</button>
+                </div>
+
                 <div style={{ textAlign: "center", marginTop: "20px" }}>
                   <img src="/image/qgis.png" alt="QGIS" style={{ maxWidth: "100%", height: "auto", borderRadius: "6px" }} />
                 </div>

@@ -60,11 +60,23 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     return (saved && saved.settings_dir) || "C:\\qgis_launcher";
   });
 
+  const [pathAliases, setPathAliases] = useState(() => {
+    const saved = getSavedSettings();
+    return (saved && saved.path_aliases) || { BOX: "%USERPROFILE%\\Box" };
+  });
+
+  const [rcloneMounts, setRcloneMounts] = useState(() => {
+    const saved = getSavedSettings();
+    return (saved && saved.rclone_mounts) || [];
+  });
+
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
   const [previewBox, setPreviewBox] = useState(boxUrl);
   const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(toProjectPathArray(qgisProjectPath));
   const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
+  const [previewPathAliases, setPreviewPathAliases] = useState(pathAliases);
+  const [previewRcloneMounts, setPreviewRcloneMounts] = useState(rcloneMounts);
 
   // 起動時: localStorage に保存値がなければ /qgis_settings.json を自動フェッチして初期値を適用する
   useEffect(() => {
@@ -95,6 +107,12 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   useEffect(() => {
     setPreviewLauncherDir(launcherDir);
   }, [launcherDir]);
+  useEffect(() => {
+    setPreviewPathAliases(pathAliases);
+  }, [pathAliases]);
+  useEffect(() => {
+    setPreviewRcloneMounts(rcloneMounts);
+  }, [rcloneMounts]);
 
   function applyPreview() {
     setReearthUrl(previewReearth);
@@ -102,6 +120,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
     setLauncherDir(previewLauncherDir);
+    setPathAliases(previewPathAliases);
+    setRcloneMounts(previewRcloneMounts);
   }
 
   // Apply loaded settings (from file) to preview and active states in one place
@@ -126,6 +146,14 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     if (data.settings_dir) {
       setPreviewLauncherDir(data.settings_dir);
       setLauncherDir(data.settings_dir);
+    }
+    if (data.path_aliases) {
+      setPreviewPathAliases(data.path_aliases);
+      setPathAliases(data.path_aliases);
+    }
+    if (data.rclone_mounts !== undefined) {
+      setPreviewRcloneMounts(data.rclone_mounts);
+      setRcloneMounts(data.rclone_mounts);
     }
     // Persist the whole settings object for full restore
     try {
@@ -170,7 +198,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         project_path: qgisProjectPath,
         reearth_url: reearthUrl,
         box_url: boxUrl,
-        settings_dir: launcherDir
+        settings_dir: launcherDir,
+        path_aliases: pathAliases,
+        rclone_mounts: rcloneMounts
       };
       localStorage.setItem('portal:settings', JSON.stringify(payload));
       return true;
@@ -187,7 +217,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         project_path: previewQgisProjectPath,
         reearth_url: previewReearth,
         box_url: previewBox,
-        settings_dir: previewLauncherDir
+        settings_dir: previewLauncherDir,
+        path_aliases: previewPathAliases,
+        rclone_mounts: previewRcloneMounts
       };
       localStorage.setItem('portal:settings', JSON.stringify(payload));
     } catch (e) {}
@@ -196,6 +228,8 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
     setLauncherDir(previewLauncherDir);
+    setPathAliases(previewPathAliases);
+    setRcloneMounts(previewRcloneMounts);
     // Local launcher integration removed; persisted to localStorage only.
     return true;
   }
@@ -208,7 +242,9 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
       project_path: previewQgisProjectPath,
       reearth_url: previewReearth,
       box_url: previewBox,
-      settings_dir: previewLauncherDir
+      settings_dir: previewLauncherDir,
+      path_aliases: previewPathAliases,
+      rclone_mounts: previewRcloneMounts
     };
     try {
       // Preferred: showSaveFilePicker (allows user to choose exact file)
@@ -253,11 +289,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     setPreviewQgisProfile("default");
     setPreviewQgisProjectPath([]);
     setPreviewLauncherDir("C:\\qgis_launcher");
+    setPreviewPathAliases({ BOX: "%USERPROFILE%\\Box" });
+    setPreviewRcloneMounts([]);
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
     setQgisProfile("default");
     setQgisProjectPath([]);
     setLauncherDir("C:\\qgis_launcher");
+    setPathAliases({ BOX: "%USERPROFILE%\\Box" });
+    setRcloneMounts([]);
     try {
       localStorage.removeItem('portal:settings');
     } catch (e) {}
@@ -275,11 +315,15 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
         previewQgisProfile,
         previewQgisProjectPath,
         previewLauncherDir,
+        previewPathAliases,
+        previewRcloneMounts,
         setPreviewReearth,
         setPreviewBox,
         setPreviewQgisProfile,
         setPreviewQgisProjectPath,
         setPreviewLauncherDir,
+        setPreviewPathAliases,
+        setPreviewRcloneMounts,
         applyPreview,
         save,
         resetTo,
