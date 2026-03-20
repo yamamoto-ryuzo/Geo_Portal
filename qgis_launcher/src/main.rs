@@ -1091,6 +1091,59 @@ fn detect_qgis_major_version(qgis_exe: &str) -> Option<u32> {
     None
 }
 
+/// 実行フォルダ/ini/<role>.ini を
+/// %APPDATA%\QGIS\QGIS{major}\profiles\{profile}\QGIS\QGISCUSTOMIZATION{major}.ini にコピーし、
+/// QGIS{major}.ini で UI カスタマイズを有効化する。
+fn apply_role_ini(role: &str, profile_name: &str, qgis_exe: &str) {
+    let exe_dir = match env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
+        Some(d) => d,
+        None => return,
+    };
+
+    let src = exe_dir.join("ini").join(format!("{}.ini", role));
+    if !src.exists() {
+        println!("ロールINIが見つかりません (スキップ): {:?}", src);
+        return;
+    }
+
+    let major = detect_qgis_major_version(qgis_exe).unwrap_or(3);
+    let appdata = match env::var("APPDATA") {
+        Ok(v) => v,
+        Err(_) => return,
+    };
+    let dest_dir = PathBuf::from(&appdata)
+        .join("QGIS")
+        .join(format!("QGIS{}", major))
+        .join("profiles")
+        .join(profile_name)
+        .join("QGIS");
+
+    if let Err(e) = fs::create_dir_all(&dest_dir) {
+        eprintln!("カスタマイズ用ディレクトリ作成失敗: {}", e);
+        return;
+    }
+
+    let dest = dest_dir.join(format!("QGISCUSTOMIZATION{}.ini", major));
+    match fs::copy(&src, &dest) {
+        Ok(_) => println!("ロールINI適用: {:?} → {:?}", src, dest),
+        Err(e) => eprintln!("ロールINI適用失敗: {}", e),
+    }
+
+    // QGIS{major}.ini で customization\enabled=true を確保する
+    let qgis_ini = dest_dir.join(format!("QGIS{}.ini", major));
+    let content = fs::read_to_string(&qgis_ini).unwrap_or_default();
+    if !content.contains("customization\\enabled=true") {
+        let new_content = if content.contains("customization\\enabled=false") {
+            content.replace("customization\\enabled=false", "customization\\enabled=true")
+        } else if content.contains("[UI]") {
+            content.replace("[UI]", "[UI]\ncustomization\\enabled=true")
+        } else {
+            format!("{}\n[UI]\ncustomization\\enabled=true\n", content)
+        };
+        let _ = fs::write(&qgis_ini, new_content);
+    }
+}
+
 fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, _rclone_mounts: &[RcloneMount], _settings: &QgisSettings, role: &str) {
     // QGISのパスを決定（プロファイルコピーは EXE 起動時に完了済み）
     let qgis_path = if exe_path.is_empty() {
@@ -1105,6 +1158,14 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
         exe_path.to_string()
     };
 
+    // 実行フォルダ/ini/<role>.ini を QGIS カスタマイズファイルとして適用する
+    apply_role_ini(role, profile_name, &qgis_path);
+
+    // 実行フォルダ/ini/startup.py のパスを取得（存在する場合のみ --code に渡す）
+    let startup_script: Option<PathBuf> = env::current_exe().ok()
+        .and_then(|p| p.parent().map(|d| d.join("ini").join("startup.py")))
+        .filter(|p| p.exists());
+
     // Helper to spawn one process with optional project
     let spawn_with_project = |maybe_project: Option<PathBuf>| {
         let mut cmd = Command::new(&qgis_path);
@@ -1117,6 +1178,9 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.env("PORTAL_USERROLE", role);
         cmd.arg("--profile").arg(profile_name);
+        if let Some(ref script) = startup_script {
+            cmd.arg("--code").arg(script);
+        }
         if let Some(p) = maybe_project {
             if let Some(s) = p.to_str() {
                 cmd.arg(s);
