@@ -2,8 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 const PortalContext = createContext(null);
 
-export function PortalProvider({ children, initialReearth, initialBox }) {
+export function PortalProvider({ children, initialReearth, initialBox, initialSettings }) {
   // Settings are persisted as a single JSON object under 'portal:settings'
+  // initialSettings: getStaticProps でサーバーサイドから渡されるデフォルト設定
 
   function getReearthFromQuery() {
     if (typeof window === "undefined") return "";
@@ -36,38 +37,45 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
     const q = getReearthFromQuery();
     if (saved && saved.reearth_url) return saved.reearth_url;
     if (q) return q;
+    if (initialSettings && initialSettings.reearth_url) return initialSettings.reearth_url;
     return initialReearth || "";
   });
 
   const [boxUrl, setBoxUrl] = useState(() => {
     const saved = getSavedSettings();
     if (saved && saved.box_url) return saved.box_url;
+    if (initialSettings && initialSettings.box_url) return initialSettings.box_url;
     return initialBox || "";
   });
 
   const [qgisProfile, setQgisProfile] = useState(() => {
     const saved = getSavedSettings();
-    return (saved && saved.profile) || "default";
+    if (saved && saved.profile) return saved.profile;
+    return (initialSettings && initialSettings.profile) || "default";
   });
 
   const [qgisProjectPath, setQgisProjectPath] = useState(() => {
     const saved = getSavedSettings();
-    return toProjectPathArray(saved && saved.project_path);
+    if (saved && saved.project_path !== undefined) return toProjectPathArray(saved.project_path);
+    return toProjectPathArray(initialSettings && initialSettings.project_path);
   });
 
   const [launcherDir, setLauncherDir] = useState(() => {
     const saved = getSavedSettings();
-    return (saved && saved.settings_dir) || "C:\\qgis_launcher";
+    if (saved && saved.settings_dir) return saved.settings_dir;
+    return (initialSettings && initialSettings.settings_dir) || "C:\\qgis_launcher";
   });
 
   const [pathAliases, setPathAliases] = useState(() => {
     const saved = getSavedSettings();
-    return (saved && saved.path_aliases) || { BOX: "%USERPROFILE%\\Box" };
+    if (saved && saved.path_aliases) return saved.path_aliases;
+    return (initialSettings && initialSettings.path_aliases) || { BOX: "%USERPROFILE%\\Box" };
   });
 
   const [rcloneMounts, setRcloneMounts] = useState(() => {
     const saved = getSavedSettings();
-    return (saved && saved.rclone_mounts) || [];
+    if (saved && saved.rclone_mounts) return saved.rclone_mounts;
+    return (initialSettings && initialSettings.rclone_mounts) || [];
   });
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
@@ -78,17 +86,7 @@ export function PortalProvider({ children, initialReearth, initialBox }) {
   const [previewPathAliases, setPreviewPathAliases] = useState(pathAliases);
   const [previewRcloneMounts, setPreviewRcloneMounts] = useState(rcloneMounts);
 
-  // 起動時: localStorage に保存値がなければ /qgis_settings.json を自動フェッチして初期値を適用する
-  useEffect(() => {
-    if (getSavedSettings() !== null) return; // localStorage に値があればスキップ
-    fetch('/qgis_settings.json')
-      .then((res) => res.text())
-      .then((text) => {
-        const data = JSON.parse(text);
-        applyLoadedSettings(data);
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // 起動時: localStorage に保存値がなければ initialSettings (SSR) を適用済みのためフェッチ不要
 
   useEffect(() => {
     setPreviewReearth(reearthUrl);

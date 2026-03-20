@@ -3,9 +3,6 @@
   "version": "0.9.0",
   "private": true,
   "scripts": {
-    "sync-settings": "node -e \"const fs=require('fs');fs.copyFileSync('qgis_launcher/download/qgis_settings.json','public/qgis_settings.json');\"",
-    "predev": "npm run sync-settings",
-    "prebuild": "npm run sync-settings",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

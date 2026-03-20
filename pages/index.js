@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { PortalProvider, usePortal } from "../src/PortalContext";
+import path from "path";
+import fs from "fs";
 
 const SERVICES = [
   { name: "Re:Earth", url: "https://c-01kcwqbkykrk15apgxeqrvr6rv.visualizer.reearth.io/" },
@@ -506,10 +508,21 @@ function Inner() {
   );
 }
 
-export default function Home() {
+export default function Home({ initialSettings }) {
   return (
-    <PortalProvider initialReearth={SERVICES[0].url}>
+    <PortalProvider initialReearth={SERVICES[0].url} initialSettings={initialSettings}>
       <Inner />
     </PortalProvider>
   );
+}
+
+export async function getStaticProps() {
+  try {
+    const filePath = path.join(process.cwd(), 'qgis_launcher', 'download', 'qgis_settings.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const initialSettings = JSON.parse(raw);
+    return { props: { initialSettings } };
+  } catch (e) {
+    return { props: { initialSettings: null } };
+  }
 }
