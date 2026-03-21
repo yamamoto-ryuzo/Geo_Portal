@@ -64,13 +64,27 @@
 - 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
 
 - `project_path` の配列対応:
-	- `qgis_settings.json` の `project_path` は文字列と配列の両方を読み込めますが、保存や新しい設定では配列を推奨します。
-	- 配列に複数のパスを指定すると、ランチャーは配列要素ごとに QGIS の起動リクエストを行います（GUI からは単一選択を行い、保存時に配列へ変換して保存します）。
+	- `qgis_settings.json` の `project_path` は「起動候補プロジェクトの一覧」です。文字列と配列の両方を読み込めますが、保存や新しい設定では配列を推奨します。
+	- **GUI での選択・起動時に `project_path` は書き換えられません。** 選択したプロジェクトは `current_project` フィールドに保存されます。
 	- 各エントリの解釈ルール:
 		1. **ファイル指定**（拡張子 `.qgs` / `.qgz`）: そのファイルが存在すれば候補に追加します。
 		2. **フォルダ指定**（拡張子なし）: そのフォルダ直下にある `.qgs` / `.qgz` を列挙して候補に追加します。
 		3. **パス解決の優先順位**: 絶対パスはそのまま使用し、相対パスは `settings_dir` を基準に解決します。
 	- GUI での表示名は常に **「直近1階層上のフォルダ名 - ファイル名」** 形式（例: `ProjectFiles - ProjectFile.qgs`）に統一されます。ルート直下のファイルはドライブ文字を親名として表示します（例: `C: - ProjectFile.qgs`）。
+
+- `current_project` フィールド（カレントプロジェクト）:
+	- GUI で「Launch QGIS」を押すと、選択したプロジェクトの絶対パスが `current_project` に保存されます。
+	- 次回起動時は `current_project` を優先してプロジェクトの初期選択を復元します。`current_project` が未設定の場合は `project_path[0]` の先頭エントリをデフォルト選択します。
+	- `project_path`（候補一覧）は変更されないため、JSON を編集せずにプロジェクト一覧を維持したまま、前回の選択状態を再現できます。
+	- 設定例:
+		```json
+		{
+		  "project_path": [
+		    "Q:\\ProjectFiles"
+		  ],
+		  "current_project": "Q:\\ProjectFiles\\ProjectFile.qgs"
+		}
+		```
 
 - `qgis_settings.json` のバックスラッシュ自動修正:
 	- Windows のエクスプローラからコピーした単一バックスラッシュのパス（例: `"C:\ProjectFiles2"`）が JSON に記載されていても、ランチャー起動時に自動的に `\\` へ修正してから読み込みます。
@@ -106,6 +120,58 @@
 	- **注意**: コピー先に既存ファイルがある場合は上書きしません（ユーザーの設定変更を保護）。配信ファイルを更新してユーザー側に反映させたい場合は、コピー先の該当ファイルを削除してから再起動してください。
 
 - CLI モード: `--cli` を指定すると GUI を起動せずに CLI モードで動作します。
+
+---
+
+## ユーザーロール制御
+
+GUI の「User Role」ドロップダウンで `Viewer` / `Editor` / `Administrator` を選択すると、QGIS の UI がロールに応じて制限されます。
+
+### 仕組み
+
+QGIS 起動時に以下の 3 つの引数が自動で設定されます：
+
+| 引数 | ファイル | 内容 |
+|---|---|---|
+| `--customizationfile` | `ini/<role>.ini` | メニュー・ツールバーの表示/非表示を静的に制御 |
+| `--globalsettingsfile` | `ini/qgis_global_settings.ini` | `userrole` を QGIS グローバル変数として設定（プロジェクト式 `@userrole` で参照可能）|
+| `--code` | `ini/startup.py` | 起動後に動的制御（ツールバー表示・レイヤーのReadOnly設定）|
+
+```
+qgis.exe --profile geo_custom
+         --customizationfile   ini/Viewer.ini
+         --globalsettingsfile  ini/qgis_global_settings.ini
+         --code                ini/startup.py
+```
+
+### ロールごとの制御内容
+
+| ロール | ini ファイル | UI 制御 | レイヤー |
+|---|---|---|---|
+| **Viewer** | `Viewer.ini` | 編集メニュー・編集ツールバーを非表示 | プロジェクト読み込み時に全ベクターレイヤーを ReadOnly に設定 |
+| **Editor** | `Editor.ini` | プロジェクト新規作成・保存メニューを非表示（編集操作は許可） | 制限なし |
+| **Administrator** | `Administrator.ini` | 制限なし | 制限なし |
+
+### ファイル構成
+
+```
+qgis_launcher.exe と同階層/
+  ini/
+    Viewer.ini                  ← ロール別 QGIS UIカスタマイズ定義
+    Editor.ini
+    Administrator.ini
+    qgis_global_settings.ini    ← 起動のたびに自動生成（userrole を記録）
+    startup.py                  ← QGIS 起動後に自動実行されるスクリプト
+```
+
+> **注意**: `ini/` フォルダが実行ファイルと同階層に存在しない場合、ロール制御はスキップされます（エラーにはなりません）。
+
+### startup.py の動作タイミング
+
+| タイミング | 処理 |
+|---|---|
+| 起動後 500ms | UI 制御（ツールバー表示/非表示、ボタンの有効/無効）|
+| プロジェクト読み込みのたびに | Viewer の場合、全ベクターレイヤーを ReadOnly に設定 |
 
 - 設定ファイルの探索と優先度:
 	- 指定された `--settings_dir` が存在する場合、まずそのディレクトリ内の `qgis_settings.json` を使用します。

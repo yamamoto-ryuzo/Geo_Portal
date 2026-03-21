@@ -59,6 +59,9 @@ pub struct QgisSettings {
     pub path_aliases: HashMap<String, String>,
     /// ユーザーロール: "Viewer" / "Editor" / "Administrator"
     pub userrole: Option<String>,
+    /// 最後に選択したプロジェクトの絶対パス（次回起動時の初期選択に使用）
+    #[serde(default)]
+    pub current_project: Option<String>,
 }
 
 impl Default for QgisSettings {
@@ -74,6 +77,7 @@ impl Default for QgisSettings {
             rclone_mounts: Vec::new(),
             path_aliases: HashMap::new(),
             userrole: None,
+            current_project: None,
         }
     }
 }
@@ -523,33 +527,33 @@ fn run_gui(args: Args) {
     let project_map = update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
     role_in.set_value(settings.userrole.as_deref().unwrap_or("Viewer"));
     profile_in.set_value(&settings.profile);
-    // 初期表示: settings.project_path[0] を絶対パスに解決してマップを検索し、
-    // 見つからない場合は display_name_for() で表示名を計算する
-    if !settings.project_path.is_empty() {
-        let first_raw = &settings.project_path[0];
-        let first_pb = PathBuf::from(first_raw);
-        let first_effective = if first_pb.is_absolute() {
-            first_pb.to_string_lossy().to_string()
-        } else {
-            PathBuf::from(&settings_dir).join(first_raw).to_string_lossy().to_string()
-        };
-        let display = project_map.iter()
-            // ファイル指定の完全一致
-            .find(|(_, actual)| *actual == first_effective)
-            .or_else(|| {
-                // フォルダ指定の場合: そのフォルダ配下の最初のエントリを前方一致で探す
-                let prefix_s = format!("{}/",  first_effective.trim_end_matches(['/', '\\']));
-                let prefix_b = format!("{}\\", first_effective.trim_end_matches(['/', '\\']));
-                project_map.iter().find(|(_, actual)| {
-                    actual.starts_with(&prefix_s) || actual.starts_with(&prefix_b)
+    // 初期表示: current_project（前回選択）を優先し、なければ project_path[0] を使用
+    {
+        let init_raw = settings.current_project.as_deref()
+            .filter(|s| !s.is_empty())
+            .or_else(|| settings.project_path.first().map(|s| s.as_str()));
+        if let Some(first_raw) = init_raw {
+            let first_pb = PathBuf::from(first_raw);
+            let first_effective = if first_pb.is_absolute() {
+                first_pb.to_string_lossy().to_string()
+            } else {
+                PathBuf::from(&settings_dir).join(first_raw).to_string_lossy().to_string()
+            };
+            let display = project_map.iter()
+                .find(|(_, actual)| *actual == first_effective)
+                .or_else(|| {
+                    let prefix_s = format!("{}/",  first_effective.trim_end_matches(['/', '\\']));
+                    let prefix_b = format!("{}\\", first_effective.trim_end_matches(['/', '\\']));
+                    project_map.iter().find(|(_, actual)| {
+                        actual.starts_with(&prefix_s) || actual.starts_with(&prefix_b)
+                    })
                 })
-            })
-            .map(|(d, _)| d.clone())
-            // map に存在しない場合（ファイルが存在しない等）は display_name_for で計算
-            .unwrap_or_else(|| display_name_for(&first_effective));
-        project_in.set_value(&display);
-    } else {
-        project_in.set_value("");
+                .map(|(d, _)| d.clone())
+                .unwrap_or_else(|| display_name_for(&first_effective));
+            project_in.set_value(&display);
+        } else {
+            project_in.set_value("");
+        }
     }
 
     let available_versions = get_available_qgis_versions();
@@ -594,16 +598,18 @@ fn run_gui(args: Args) {
                 .map(|(_, actual)| actual.clone())
                 .unwrap_or_else(|| project_display.clone());
 
-            // 設定の保存（実パスで保存）
+            // 設定の保存（project_path は JSON を変更しない — 選択プロジェクトは current_project に保存）
             let mut current = get_current_settings(&settings_dir);
             current.profile = profile_val.clone();
-            current.project_path = vec![project_actual.clone()];
+            // current.project_path はそのまま維持（JSONのプロジェクト一覧を上書きしない）
             current.qgis_executable = Some(exe_path.clone());
             current.userrole = Some(role_val.clone());
+            current.current_project = Some(project_actual.clone());
             let _ = save_settings(&settings_dir, &current);
 
-            // Call the launcher with an array of project paths
-            launch_qgis(&profile_val, &current.project_path, &settings_dir, &exe_path, &current.rclone_mounts, &current, &role_val);
+            // 今回選択されたプロジェクトのみを QGIS に渡す
+            let selected_project = vec![project_actual.clone()];
+            launch_qgis(&profile_val, &selected_project, &settings_dir, &exe_path, &current.rclone_mounts, &current, &role_val);
             // QGIS 起動後にランチャーを終了
             std::process::exit(0);
         });
@@ -1043,7 +1049,20 @@ fn copy_profiles_at_startup(settings_dir: &str) {
     // インストール済みQGISのメジャーバージョンを収集
     let installed = get_available_qgis_versions();
     let mut major_versions: Vec<u32> = installed.iter()
-        .filter_map(|(_, exe)| detect_qgis_major_version(exe))
+        .filter_map(|(_, exe)| {
+            let lower = exe.to_lowercase();
+            for major in [4u32, 3u32] {
+                let patterns = [
+                    format!("qgis {}", major),
+                    format!("qgis{}", major),
+                    format!("\\{}.", major),
+                ];
+                if patterns.iter().any(|p| lower.contains(p.as_str())) {
+                    return Some(major);
+                }
+            }
+            None
+        })
         .collect();
     major_versions.sort();
     major_versions.dedup();
@@ -1073,74 +1092,31 @@ fn copy_profiles_at_startup(settings_dir: &str) {
     }
 }
 
-/// QGISの実行ファイルパスからメジャーバージョン番号（3, 4, ...）を推定する
-fn detect_qgis_major_version(qgis_exe: &str) -> Option<u32> {
-    // パス中の "QGIS 3." "QGIS 4."、"QGIS3." "QGIS4." などを探す
-    let lower = qgis_exe.to_lowercase();
-    // "qgis 3" / "qgis3" / "3." などを順に試す
-    for major in [4u32, 3u32] {
-        let patterns = [
-            format!("qgis {}", major),
-            format!("qgis{}", major),
-            format!("\\{}.\\", major),
-        ];
-        if patterns.iter().any(|p| lower.contains(p.as_str())) {
-            return Some(major);
-        }
+/// 実行フォルダ/ini/<role>.ini のパスを返す。存在しない場合は None。
+fn get_role_ini_path(role: &str) -> Option<PathBuf> {
+    let exe_dir = env::current_exe().ok()?.parent().map(|d| d.to_path_buf())?;
+    let p = exe_dir.join("ini").join(format!("{}.ini", role));
+    if p.exists() { Some(p) } else {
+        println!("ロールINIが見つかりません (スキップ): {:?}", p);
+        None
     }
-    None
 }
 
-/// 実行フォルダ/ini/<role>.ini を
-/// %APPDATA%\QGIS\QGIS{major}\profiles\{profile}\QGIS\QGISCUSTOMIZATION{major}.ini にコピーし、
-/// QGIS{major}.ini で UI カスタマイズを有効化する。
-fn apply_role_ini(role: &str, profile_name: &str, qgis_exe: &str) {
-    let exe_dir = match env::current_exe().ok().and_then(|p| p.parent().map(|d| d.to_path_buf())) {
-        Some(d) => d,
-        None => return,
-    };
-
-    let src = exe_dir.join("ini").join(format!("{}.ini", role));
-    if !src.exists() {
-        println!("ロールINIが見つかりません (スキップ): {:?}", src);
-        return;
+/// qgis_global_settings.ini を一時生成し、パスを返す。
+/// QGIS の --globalsettingsfile に渡すことで userrole を QGIS グローバル変数として設定する。
+/// ファイルは実行フォルダ/ini/ に書き込む。
+fn write_global_settings_ini(role: &str) -> Option<PathBuf> {
+    let exe_dir = env::current_exe().ok()?.parent().map(|d| d.to_path_buf())?;
+    let ini_dir = exe_dir.join("ini");
+    if let Err(e) = fs::create_dir_all(&ini_dir) {
+        eprintln!("ini ディレクトリ作成失敗: {}", e);
+        return None;
     }
-
-    let major = detect_qgis_major_version(qgis_exe).unwrap_or(3);
-    let appdata = match env::var("APPDATA") {
-        Ok(v) => v,
-        Err(_) => return,
-    };
-    let dest_dir = PathBuf::from(&appdata)
-        .join("QGIS")
-        .join(format!("QGIS{}", major))
-        .join("profiles")
-        .join(profile_name)
-        .join("QGIS");
-
-    if let Err(e) = fs::create_dir_all(&dest_dir) {
-        eprintln!("カスタマイズ用ディレクトリ作成失敗: {}", e);
-        return;
-    }
-
-    let dest = dest_dir.join(format!("QGISCUSTOMIZATION{}.ini", major));
-    match fs::copy(&src, &dest) {
-        Ok(_) => println!("ロールINI適用: {:?} → {:?}", src, dest),
-        Err(e) => eprintln!("ロールINI適用失敗: {}", e),
-    }
-
-    // QGIS{major}.ini で customization\enabled=true を確保する
-    let qgis_ini = dest_dir.join(format!("QGIS{}.ini", major));
-    let content = fs::read_to_string(&qgis_ini).unwrap_or_default();
-    if !content.contains("customization\\enabled=true") {
-        let new_content = if content.contains("customization\\enabled=false") {
-            content.replace("customization\\enabled=false", "customization\\enabled=true")
-        } else if content.contains("[UI]") {
-            content.replace("[UI]", "[UI]\ncustomization\\enabled=true")
-        } else {
-            format!("{}\n[UI]\ncustomization\\enabled=true\n", content)
-        };
-        let _ = fs::write(&qgis_ini, new_content);
+    let path = ini_dir.join("qgis_global_settings.ini");
+    let content = format!("[Variables]\nuserrole={role}\n", role = role);
+    match fs::write(&path, &content) {
+        Ok(_) => { println!("グローバル設定INI書き込み: {:?}", path); Some(path) }
+        Err(e) => { eprintln!("グローバル設定INI書き込み失敗: {}", e); None }
     }
 }
 
@@ -1158,8 +1134,11 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
         exe_path.to_string()
     };
 
-    // 実行フォルダ/ini/<role>.ini を QGIS カスタマイズファイルとして適用する
-    apply_role_ini(role, profile_name, &qgis_path);
+    // --customizationfile: 実行フォルダ/ini/<role>.ini を直接渡す
+    let customization_ini: Option<PathBuf> = get_role_ini_path(role);
+
+    // --globalsettingsfile: userrole を QGIS グローバル変数として渡すための ini を生成
+    let global_settings_ini: Option<PathBuf> = write_global_settings_ini(role);
 
     // 実行フォルダ/ini/startup.py のパスを取得（存在する場合のみ --code に渡す）
     let startup_script: Option<PathBuf> = env::current_exe().ok()
@@ -1178,6 +1157,12 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
         cmd.creation_flags(CREATE_NO_WINDOW);
         cmd.env("PORTAL_USERROLE", role);
         cmd.arg("--profile").arg(profile_name);
+        if let Some(ref ini) = customization_ini {
+            cmd.arg("--customizationfile").arg(ini);
+        }
+        if let Some(ref gs) = global_settings_ini {
+            cmd.arg("--globalsettingsfile").arg(gs);
+        }
         if let Some(ref script) = startup_script {
             cmd.arg("--code").arg(script);
         }
