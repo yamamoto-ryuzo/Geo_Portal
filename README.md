@@ -142,8 +142,8 @@ qgis_settings_{USERNAME}.json   ③ユーザー個別オーバーライド（任
 ```
 C:\qgis_launcher\
   qgis_settings.json              ← 全員共通のベース設定
-  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き（任意）
   qgis_settings_override.json     ← 全ユーザーに強制適用（任意）
+  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き（任意）
 ```
 
 ### 全ユーザー強制オーバーライド（qgis_settings_override.json）
