@@ -72,7 +72,7 @@ impl Default for QgisSettings {
             qgis_executable: None,
             reearth_url: None,
             box_url: None,
-            settings_dir: Some(r"C:\qgis_launcher".to_string()),
+            settings_dir: Some(get_default_settings_dir()),
             rclone_exe: None,
             rclone_mounts: Vec::new(),
             path_aliases: HashMap::new(),
@@ -80,6 +80,12 @@ impl Default for QgisSettings {
             current_project: None,
         }
     }
+}
+
+fn get_default_settings_dir() -> String {
+    env::current_exe()
+        .map(|p| p.parent().unwrap().to_string_lossy().into_owned())
+        .unwrap_or_else(|_| ".".to_string())
 }
 
 /// QGIS起動用ランチャー
@@ -92,8 +98,8 @@ struct Args {
     #[arg(short, long, default_value = "geo_custom")]
     profile: String,
 
-    /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス
-    #[arg(long, default_value = r"C:\qgis_launcher")]
+    /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス（指定がなければEXEの配置フォルダ）
+    #[arg(long, default_value_t = get_default_settings_dir())]
     settings_dir: String,
     /// コマンドラインモードで動作する（指定がなければ GUI を起動）
     #[arg(long, default_value_t = false)]
@@ -720,7 +726,7 @@ fn find_qgis_path_from_registry() -> Option<String> {
 /// 検索順:
 ///   1. settings.rclone_exe で明示指定されたパス
 ///   2. qgis_launcher.exe と同じフォルダ
-///   3. settings_dir（C:\qgis_launcher\ 等）
+///   3. settings_dir（設定フォルダ 等）
 ///   4. システム PATH
 fn find_rclone_exe(settings: &QgisSettings) -> Option<String> {
     // 1. 明示指定
@@ -760,7 +766,7 @@ fn find_rclone_exe(settings: &QgisSettings) -> Option<String> {
     }
 
     eprintln!("rclone: rclone.exe が見つかりません。");
-    eprintln!("  → qgis_launcher.exe と同じフォルダか C:\\qgis_launcher\\ に rclone.exe を置いてください。");
+    eprintln!("  → rclone.exe を qgis_launcher.exe と同じフォルダに置いてください。");
     eprintln!("  → ダウンロード: https://rclone.org/downloads/");
     None
 }
