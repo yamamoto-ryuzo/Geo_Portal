@@ -1,4 +1,14 @@
 # Changelog
+## [0.16.0] - 2026-03-21
+### 変更
+- ランチャーのカスタマイズファイル選択ロジックを厳格化（QGIS4 → `.xml`, QGIS3 → `.ini`、フォールバック無し）。
+- `launch_qgis` が子プロセス環境に `PORTAL_USERROLE` を注入するように変更。`startup.py` 側はグローバル変数と環境変数の両方を参照してロールを取得します。
+- `README.md` を実装に合わせて更新（QGIS4 を基本、ファイル構成と利用手順の明確化）。
+- QGIS4 用の Customization XML 生成 / 変換ファイルを追加（INI -> XML）。
+
+### 備考
+- QGIS 起動時のカスタマイズ適用確認には `qgis_child.log` を参照してください。GPU/OpenGL 初期化エラーが出る場合は `QT_OPENGL=software` 等のソフトウェアレンダリング設定を試してください。
+
 ## [0.14.0] - 2026-03-20
 ### 追加 (qgis_launcher)
 - 全ユーザー強制オーバーライド機能を追加（`qgis_settings_override.json`）

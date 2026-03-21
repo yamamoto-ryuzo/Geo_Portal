@@ -3,7 +3,7 @@
   "project_path": [
     "ProjectFiles"
   ],
-  "qgis_executable": "C:\\Program Files\\QGIS 4.0.0\\bin\\qgis.bat",
+  "qgis_executable": "C:\\PROGRA~1\\QGIS 3.44.8\\bin\\qgis-ltr.bat",
   "reearth_url": null,
   "box_url": null,
   "rclone_mounts": [

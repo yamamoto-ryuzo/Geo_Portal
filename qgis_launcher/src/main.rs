@@ -1082,6 +1082,32 @@ fn get_role_ini_path(role: &str) -> Option<PathBuf> {
     }
 }
 
+/// QGIS 実行パスを元に、ロール用カスタマイズファイルを選択して返す。
+/// 挙動:
+/// - QGIS4 と推定される場合は `<role>.xml` を最優先で使用し、存在しなければ `<role>.ini` を使用します。
+/// - QGIS3（またはそれ以外）の場合は `<role>.ini` を最優先で使用し、存在しなければ `<role>.xml` を使用します。
+fn get_role_customization_path(role: &str, qgis_path: &str) -> Option<PathBuf> {
+    let exe_dir = env::current_exe().ok()?.parent().map(|d| d.to_path_buf())?;
+    let ini_dir = exe_dir.join("ini");
+
+    // 判定: qgis_path による QGIS4 推定
+    let q = qgis_path.to_lowercase();
+    let looks_like_qgis4 = q.contains("qgis4") || q.contains("qgis 4") || q.contains("qgis-4") || q.contains("qgis40") || q.contains("qgis-qt6");
+    if looks_like_qgis4 {
+        // QGIS4: 必ず .xml を使用。存在しなければ None を返す（フォールバックなし）。
+        let p_xml = ini_dir.join(format!("{}.xml", role));
+        if p_xml.exists() { return Some(p_xml); }
+        println!("QGIS4 用ロールカスタマイズが見つかりません (期待: {}): dir={:?}", p_xml.display(), ini_dir);
+        return None;
+    } else {
+        // QGIS3: 必ず .ini を使用。存在しなければ None を返す（フォールバックなし）。
+        let p_ini = ini_dir.join(format!("{}.ini", role));
+        if p_ini.exists() { return Some(p_ini); }
+        println!("QGIS3 用ロールカスタマイズが見つかりません (期待: {}): dir={:?}", p_ini.display(), ini_dir);
+        return None;
+    }
+}
+
 /// qgis_global_settings.ini を一時生成し、パスを返す。
 /// QGIS の --globalsettingsfile に渡すことで userrole を QGIS グローバル変数として設定する。
 /// ファイルは実行フォルダ/ini/ に書き込む。
@@ -1161,8 +1187,8 @@ fn launch_qgis(profile_name: &str, project_paths: &[String], settings_dir: &str,
         exe_path.to_string()
     };
 
-    // --customizationfile: 実行フォルダ/ini/<role>.ini を直接渡す
-    let customization_ini: Option<PathBuf> = get_role_ini_path(role);
+    // --customizationfile: QGIS のバージョンに応じて XML/INI を選択して渡す
+    let customization_ini: Option<PathBuf> = get_role_customization_path(role, &qgis_path);
 
     // --globalsettingsfile: userrole を QGIS グローバル変数として渡すための ini を生成
     let global_settings_ini: Option<PathBuf> = write_global_settings_ini(role);
