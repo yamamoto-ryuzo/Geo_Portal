@@ -1089,6 +1089,19 @@ fn copy_profiles_at_startup(settings_dir: &str) {
             continue;
         }
         let _ = copy_dir_contents_skip(&source, target);
+        // startup.py は --code ini/startup.py で管理するため、
+        // プロファイル配下に残っている古い startup.py を削除する（二重実行防止）
+        if let Ok(entries) = fs::read_dir(target) {
+            for entry in entries.flatten() {
+                if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    let startup = entry.path().join("python").join("startup.py");
+                    if startup.exists() {
+                        let _ = fs::remove_file(&startup);
+                        println!("startup.py を削除（--code に一本化）: {:?}", startup);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1230,9 +1243,7 @@ fn copy_dir_contents_skip(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
             if !to.exists() { fs::create_dir_all(&to)?; }
             copy_dir_contents_skip(&from, &to)?;
         } else if file_type.is_file() {
-            // startup.py はランチャー管理ファイルのため常に上書き（二重実行防止）
-            let force_overwrite = entry.file_name().to_string_lossy().eq_ignore_ascii_case("startup.py");
-            if force_overwrite || !to.exists() { fs::copy(&from, &to)?; }
+            if !to.exists() { fs::copy(&from, &to)?; }
         }
     }
     Ok(())
