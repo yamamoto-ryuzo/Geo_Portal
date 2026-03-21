@@ -609,7 +609,7 @@ fn run_gui(args: Args) {
 
             // 今回選択されたプロジェクトのみを QGIS に渡す
             let selected_project = vec![project_actual.clone()];
-            launch_qgis(&profile_val, &selected_project, &settings_dir, &exe_path, &current.rclone_mounts, &current, &role_val);
+            launch_qgis(&profile_val, &selected_project, &settings_dir, &exe_path, &role_val);
             // QGIS 起動後にランチャーを終了
             std::process::exit(0);
         });
@@ -620,26 +620,14 @@ fn run_gui(args: Args) {
 
 fn main() {
     let args = Args::parse();
-    // 起動時の実行ファイルパスとカレントディレクトリをログ出力（デバッグ用）
-    match env::current_exe() {
-        Ok(p) => println!("DEBUG: current_exe = {:?}", p),
-        Err(e) => eprintln!("DEBUG: current_exe 取得失敗: {}", e),
-    }
-    match env::current_dir() {
-        Ok(d) => println!("DEBUG: current_dir (before) = {:?}", d),
-        Err(e) => eprintln!("DEBUG: current_dir 取得失敗: {}", e),
-    }
 
     // 実行ファイルのフォルダをカレントディレクトリに設定する
     if let Ok(exe_path) = env::current_exe() {
         if let Some(parent) = exe_path.parent() {
             if let Err(e) = env::set_current_dir(parent) {
                 eprintln!("カレントディレクトリ設定失敗: {}", e);
-            } else if let Ok(d) = env::current_dir() {
-                println!("DEBUG: current_dir (after) = {:?}", d);
             }
         }
-
     }
 
     let settings = get_current_settings(&args.settings_dir);
@@ -679,7 +667,7 @@ fn main() {
 
     let userrole = settings.userrole.as_deref().unwrap_or("Viewer").to_string();
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
-    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &settings.rclone_mounts, &settings, &userrole);
+    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &userrole);
 }
 
 fn find_qgis_path_from_registry() -> Option<String> {
@@ -1133,7 +1121,54 @@ fn write_global_settings_ini(role: &str) -> Option<PathBuf> {
     }
 }
 
-fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &str, exe_path: &str, _rclone_mounts: &[RcloneMount], _settings: &QgisSettings, role: &str) {
+/// project_path の単一エントリを実際の .qgs/.qgz ファイルパスに解決する。
+/// - .qgs/.qgz 拡張子のパス → そのファイルが存在すれば返す
+/// - フォルダパス            → 直下の .qgs/.qgz を昇順で列挙して最初を返す
+/// - どちらも解決できない場合  → None（QGIS はプロジェクト未指定で起動）
+fn resolve_project_to_file(path_str: &str, settings_dir: &str) -> Option<PathBuf> {
+    if path_str.is_empty() {
+        return None;
+    }
+    let pb = PathBuf::from(path_str);
+    let lower = path_str.to_lowercase();
+    let is_qgis_file = lower.ends_with(".qgs") || lower.ends_with(".qgz");
+
+    // 絶対パスはそのまま、相対パスは settings_dir 基準で解決
+    let candidates: Vec<PathBuf> = if pb.is_absolute() {
+        vec![pb.clone()]
+    } else {
+        vec![pb.clone(), PathBuf::from(settings_dir).join(&pb)]
+    };
+
+    for effective in &candidates {
+        if is_qgis_file {
+            if effective.is_file() {
+                return Some(effective.clone());
+            }
+        } else if effective.is_dir() {
+            // フォルダ: 直下の .qgs/.qgz を昇順で列挙し最初を返す
+            if let Ok(entries) = fs::read_dir(effective) {
+                let mut files: Vec<_> = entries
+                    .flatten()
+                    .filter(|e| e.file_type().map(|ft| ft.is_file()).unwrap_or(false))
+                    .filter(|e| {
+                        let n = e.file_name().to_string_lossy().to_lowercase();
+                        n.ends_with(".qgs") || n.ends_with(".qgz")
+                    })
+                    .collect();
+                files.sort_by_key(|e| e.file_name());
+                if let Some(first) = files.first() {
+                    return Some(effective.join(first.file_name()));
+                }
+            }
+            // フォルダに .qgs/.qgz がない場合はプロジェクト未指定で起動
+            return None;
+        }
+    }
+    None
+}
+
+fn launch_qgis(profile_name: &str, project_paths: &[String], settings_dir: &str, exe_path: &str, role: &str) {
     // QGISのパスを決定（プロファイルコピーは EXE 起動時に完了済み）
     let qgis_path = if exe_path.is_empty() {
         match find_qgis_path_from_registry() {
@@ -1195,37 +1230,8 @@ fn launch_qgis(profile_name: &str, project_paths: &Vec<String>, settings_dir: &s
         return;
     }
 
-    for project_path in project_paths {
-        let effective_project: Option<PathBuf> = if project_path.trim().is_empty() {
-            None
-        } else {
-            let real_project_path = if project_path.contains(" - ") {
-                project_path.replace(" - ", "\\")
-            } else {
-                project_path.to_string()
-            };
-
-            let pb = PathBuf::from(&real_project_path);
-            if pb.exists() {
-                Some(pb)
-            } else {
-                let candidate = PathBuf::from(settings_dir).join(&pb);
-                if candidate.exists() {
-                    Some(candidate)
-                } else {
-                    if pb.parent().is_none() {
-                        if let Some(proj_stem) = pb.file_stem().and_then(|s| s.to_str().map(|s| s.to_string())) {
-                            if let Ok(mut exe_path) = env::current_exe() {
-                                exe_path.pop();
-                                let fallback_candidate = exe_path.join(proj_stem).join(&pb);
-                                if fallback_candidate.exists() { Some(fallback_candidate) } else { None }
-                            } else { None }
-                        } else { None }
-                    } else { None }
-                }
-            }
-        };
-
+    for path_str in project_paths {
+        let effective_project = resolve_project_to_file(path_str.trim(), settings_dir);
         spawn_with_project(effective_project);
     }
 }
