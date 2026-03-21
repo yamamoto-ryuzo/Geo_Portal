@@ -1230,7 +1230,9 @@ fn copy_dir_contents_skip(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
             if !to.exists() { fs::create_dir_all(&to)?; }
             copy_dir_contents_skip(&from, &to)?;
         } else if file_type.is_file() {
-            if !to.exists() { fs::copy(&from, &to)?; }
+            // startup.py はランチャー管理ファイルのため常に上書き（二重実行防止）
+            let force_overwrite = entry.file_name().to_string_lossy().eq_ignore_ascii_case("startup.py");
+            if force_overwrite || !to.exists() { fs::copy(&from, &to)?; }
         }
     }
     Ok(())

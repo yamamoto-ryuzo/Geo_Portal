@@ -1,7 +1,7 @@
 {
   "profile": "geo_custom",
   "project_path": [
-    "ProjectFiles/ProjectFile.qgs","c:/ProjectFiles2/ProjectFile.qgs"
+    "ProjectFiles"
   ],
   "qgis_executable": "C:\\PROGRA~1\\QGIS 3.44.8\\bin\\qgis-ltr.bat",
   "reearth_url": null,
