@@ -60,12 +60,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     return toProjectPathArray(initialSettings && initialSettings.project_path);
   });
 
-  const [launcherDir, setLauncherDir] = useState(() => {
-    const saved = getSavedSettings();
-    if (saved && saved.settings_dir) return saved.settings_dir;
-    return (initialSettings && initialSettings.settings_dir) || "C:\\qgis_launcher";
-  });
-
   const [pathAliases, setPathAliases] = useState(() => {
     const saved = getSavedSettings();
     if (saved && saved.path_aliases) return saved.path_aliases;
@@ -82,7 +76,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
   const [previewBox, setPreviewBox] = useState(boxUrl);
   const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(toProjectPathArray(qgisProjectPath));
-  const [previewLauncherDir, setPreviewLauncherDir] = useState(launcherDir);
   const [previewPathAliases, setPreviewPathAliases] = useState(pathAliases);
   const [previewRcloneMounts, setPreviewRcloneMounts] = useState(rcloneMounts);
 
@@ -103,9 +96,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setPreviewQgisProjectPath(toProjectPathArray(qgisProjectPath));
   }, [qgisProjectPath]);
   useEffect(() => {
-    setPreviewLauncherDir(launcherDir);
-  }, [launcherDir]);
-  useEffect(() => {
     setPreviewPathAliases(pathAliases);
   }, [pathAliases]);
   useEffect(() => {
@@ -117,7 +107,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setBoxUrl(previewBox);
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
-    setLauncherDir(previewLauncherDir);
     setPathAliases(previewPathAliases);
     setRcloneMounts(previewRcloneMounts);
   }
@@ -140,10 +129,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
       const arr = toProjectPathArray(data.project_path);
       setPreviewQgisProjectPath(arr);
       setQgisProjectPath(arr);
-    }
-    if (data.settings_dir) {
-      setPreviewLauncherDir(data.settings_dir);
-      setLauncherDir(data.settings_dir);
     }
     if (data.path_aliases) {
       setPreviewPathAliases(data.path_aliases);
@@ -197,7 +182,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         project_path: qgisProjectPath,
         reearth_url: reearthUrl,
         box_url: boxUrl,
-        settings_dir: launcherDir,
         path_aliases: pathAliases,
         rclone_mounts: rcloneMounts
       };
@@ -217,7 +201,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         project_path: previewQgisProjectPath,
         reearth_url: previewReearth,
         box_url: previewBox,
-        settings_dir: previewLauncherDir,
         path_aliases: previewPathAliases,
         rclone_mounts: previewRcloneMounts
       };
@@ -227,7 +210,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setBoxUrl(previewBox);
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
-    setLauncherDir(previewLauncherDir);
     setPathAliases(previewPathAliases);
     setRcloneMounts(previewRcloneMounts);
     // Local launcher integration removed; persisted to localStorage only.
@@ -243,7 +225,6 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
       project_path: previewQgisProjectPath,
       reearth_url: previewReearth,
       box_url: previewBox,
-      settings_dir: previewLauncherDir,
       path_aliases: previewPathAliases,
       rclone_mounts: previewRcloneMounts
     };
@@ -289,14 +270,12 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setPreviewBox(box || "");
     setPreviewQgisProfile("default");
     setPreviewQgisProjectPath([]);
-    setPreviewLauncherDir("C:\\qgis_launcher");
     setPreviewPathAliases({ BOX: "%USERPROFILE%\\Box" });
     setPreviewRcloneMounts([]);
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
     setQgisProfile("default");
     setQgisProjectPath([]);
-    setLauncherDir("C:\\qgis_launcher");
     setPathAliases({ BOX: "%USERPROFILE%\\Box" });
     setRcloneMounts([]);
     try {
@@ -311,18 +290,15 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         boxUrl,
         qgisProfile,
         qgisProjectPath,
-        launcherDir,
         previewReearth,
         previewQgisProfile,
         previewQgisProjectPath,
-        previewLauncherDir,
         previewPathAliases,
         previewRcloneMounts,
         setPreviewReearth,
         setPreviewBox,
         setPreviewQgisProfile,
         setPreviewQgisProjectPath,
-        setPreviewLauncherDir,
         setPreviewPathAliases,
         setPreviewRcloneMounts,
         applyPreview,

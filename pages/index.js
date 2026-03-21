@@ -31,9 +31,9 @@ function Inner() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const {
     reearthUrl, previewReearth, setPreviewReearth,
-    previewQgisProfile, previewQgisProjectPath, previewLauncherDir,
+    previewQgisProfile, previewQgisProjectPath,
     previewPathAliases, previewRcloneMounts,
-    setPreviewQgisProfile, setPreviewQgisProjectPath, setPreviewLauncherDir,
+    setPreviewQgisProfile, setPreviewQgisProjectPath,
     setPreviewPathAliases, setPreviewRcloneMounts,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
@@ -238,24 +238,7 @@ function Inner() {
               {/* 共通設定 */}
               <div style={{ display: activeSettingsTab === "common" ? "block" : "none" }}>
                 <h3 style={{ marginTop: 0 }}>システム共通</h3>
-                <div style={{ paddingBottom: '16px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold", color: "#d97706" }}>
-                    ローカル連携用 設定ファイル保存場所 (settings_dir)
-                  </label>
-                  <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
-                    ※ネット環境とローカルPC（LGWAN等）の連携の要となるパスです。デフォルトは <code>C:\qgis_launcher</code> です。
-                  </p>
-                  <div style={{ display: "flex", gap: "8px" }}>
-                    <input
-                      type="text"
-                      value={previewLauncherDir}
-                      onChange={(e) => setPreviewLauncherDir(e.target.value)}
-                      style={{ flex: 1, padding: '10px', boxSizing: 'border-box', border: "1px solid #ccc", borderRadius: "4px" }}
-                      placeholder="例: C:\\qgis_launcher — フォルダを入力してください"
-                      title="フォルダパスを入力してください（例: C:\\qgis_launcher）。ファイルパスを入れた場合、自動で親フォルダに変換されます。"
-                    />
-                  </div>
-                </div>
+                {/* Removed settings_dir */}
               </div>
 
               {/* Re:Earth設定 */}
@@ -294,7 +277,7 @@ function Inner() {
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: "bold" }}>起動時プロジェクトファイル / フォルダ (.qgs / .qgz)</label>
                   <p style={{ fontSize: "0.85rem", color: "#666", margin: "0 0 8px 0" }}>
-                    1行に1パスを入力してください。ファイルまたはフォルダのパスを指定できます（相対パスは settings_dir 基準）。
+                    1行に1パスを入力してください。ファイルまたはフォルダのパスを指定できます（相対パスはランチャー実行フォルダ基準）。
                   </p>
                   <textarea
                     value={Array.isArray(previewQgisProjectPath) ? previewQgisProjectPath.join('\n') : (previewQgisProjectPath || '')}

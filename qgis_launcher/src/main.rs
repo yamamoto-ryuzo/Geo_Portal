@@ -94,9 +94,6 @@ struct Args {
     #[arg(short, long, default_value = "geo_custom")]
     profile: String,
 
-    /// 設定ファイル(qgis_settings.json)を配置するディレクトリパス（指定がなければEXEの配置フォルダ）
-    #[arg(long, default_value_t = get_default_settings_dir())]
-    settings_dir: String,
     /// コマンドラインモードで動作する（指定がなければ GUI を起動）
     #[arg(long, default_value_t = false)]
     cli: bool,
@@ -394,7 +391,7 @@ fn get_available_projects(settings_dir: &str, current_val: &Vec<String>) -> Vec<
         let lower = path_str.to_lowercase();
         let is_qgis_file = lower.ends_with(".qgs") || lower.ends_with(".qgz");
 
-        // 絶対パスはそのまま、相対パスは settings_dir 基準で解決
+        // 絶対パスはそのまま、相対パスはランチャー実行フォルダ基準で解決
         let effective = if pb.is_absolute() { pb.clone() } else { base.join(&pb) };
 
         if is_qgis_file {
@@ -454,7 +451,7 @@ fn update_choices(
 }
 
 #[cfg(feature = "gui")]
-fn run_gui(args: Args) {
+fn run_gui() {
     let app = app::App::default();
 
     // --- ウィンドウ ---
@@ -523,7 +520,7 @@ fn run_gui(args: Args) {
     wind.show();
 
     // initial values
-    let settings_dir = args.settings_dir.clone();
+    let settings_dir = get_default_settings_dir();
     let settings = get_current_settings(&settings_dir);
 
     let project_map = update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
@@ -632,15 +629,16 @@ fn main() {
         }
     }
 
-    let settings = get_current_settings(&args.settings_dir);
+    let settings_dir = get_default_settings_dir();
+    let settings = get_current_settings(&settings_dir);
 
     // EXE 起動時にドライブ割り当て・robocopy を実行（GUI/CLI 共通）
     mount_rclone_drives(&settings.rclone_mounts, &settings);
     // EXE 起動時にインストール済みQGISバージョンを検出してプロファイルをコピー
     // get_settings_path と同じフォールバックロジックで実際の settings_dir を解決する
     let resolved_settings_dir = {
-        let p = get_settings_path(&args.settings_dir);
-        p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| args.settings_dir.clone())
+        let p = get_settings_path(&settings_dir);
+        p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| settings_dir.clone())
     };
     copy_profiles_at_startup(&resolved_settings_dir);
 
@@ -654,7 +652,7 @@ fn main() {
 
     #[cfg(feature = "gui")]
     if !args.cli {
-        run_gui(args);
+        run_gui();
         return;
     }
 
@@ -669,7 +667,7 @@ fn main() {
 
     let userrole = settings.userrole.as_deref().unwrap_or("Viewer").to_string();
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
-    launch_qgis(&profile_to_use, &settings.project_path, &args.settings_dir, &qgis_exe, &userrole);
+    launch_qgis(&profile_to_use, &settings.project_path, &settings_dir, &qgis_exe, &userrole);
 }
 
 fn find_qgis_path_from_registry() -> Option<String> {
