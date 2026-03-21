@@ -1198,6 +1198,10 @@ fn launch_qgis(profile_name: &str, project_paths: &[String], settings_dir: &str,
         .and_then(|p| p.parent().map(|d| d.join("ini").join("startup.py")))
         .filter(|p| p.exists());
 
+    // 判定: qgis_path による QGIS4 推定（再利用）
+    let q = qgis_path.to_lowercase();
+    let is_qgis4 = q.contains("qgis4") || q.contains("qgis 4") || q.contains("qgis-4") || q.contains("qgis40") || q.contains("qgis-qt6");
+
     // Helper to spawn one process with optional project
     let spawn_with_project = |maybe_project: Option<PathBuf>| {
         let mut cmd = Command::new(&qgis_path);
@@ -1221,7 +1225,13 @@ fn launch_qgis(profile_name: &str, project_paths: &[String], settings_dir: &str,
         }
         if let Some(p) = maybe_project {
             if let Some(s) = p.to_str() {
-                cmd.arg(s);
+                // QGIS3 向けの互換性: 古い起動スクリプトでは `--project <path>` を使用していた。
+                // QGIS4 では位置引数でも可な場合が多いため、QGIS3 では `--project` を明示的に渡す。
+                if is_qgis4 {
+                    cmd.arg(s);
+                } else {
+                    cmd.arg("--project").arg(s);
+                }
             }
         }
         match cmd.spawn() {
