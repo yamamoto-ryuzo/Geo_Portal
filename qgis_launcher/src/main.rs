@@ -174,8 +174,7 @@ fn apply_user_override(base_dir: &str, base: serde_json::Value) -> serde_json::V
 
 /// 無条件オーバーライド用 JSON ファイル（qgis_settings_override.json）を
 /// ユーザー名に関係なく常に適用する。
-/// ユーザーオーバーライド（qgis_settings_{USERNAME}.json）の後に適用されるため、
-/// すべてのユーザー設定を上書きする最終フィルタとして機能する。
+/// （実装注）この関数はベース設定の直後に適用され、ユーザー個別上書きより先に処理されます。
 fn apply_force_override(base_dir: &str, base: serde_json::Value) -> serde_json::Value {
     let override_path = PathBuf::from(base_dir).join("qgis_settings_override.json");
     if !override_path.exists() {
@@ -250,10 +249,10 @@ fn get_current_settings(custom_dir: &str) -> QgisSettings {
         // Accept either string or array for `project_path` for backward compatibility.
         let fixed = fix_backslashes_in_json(&data);
         if let Ok(mut v) = serde_json::from_str::<serde_json::Value>(&fixed) {
-            // ユーザーオーバーライドファイルをマージする
-            v = apply_user_override(custom_dir, v);
-            // 無条件オーバーライドファイルをマージする（常に最後に適用）
+            // 無条件オーバーライドファイルをマージする（ベースの直後に適用）
             v = apply_force_override(custom_dir, v);
+            // ユーザーオーバーライドファイルをマージする（最終適用）
+            v = apply_user_override(custom_dir, v);
             if let Some(p) = v.get("project_path") {
                 if p.is_string() {
                     let s = p.as_str().unwrap_or("");

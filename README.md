@@ -1,4 +1,4 @@
-# Geo_Portal　バージョン: 1.0.0
+# Geo_Portal　バージョン: 1.0.1
 
 このリポジトリでは「左パネルは操作／コントロール、右パネルは表示／詳細」を原則とするマスタ詳細パターンを採用しています。　　
 
@@ -124,8 +124,118 @@ https://yr-geo-portal.vercel.app/
 
 - CLI モード: `--cli` を指定すると GUI を起動せずに CLI モードで動作します。
 
----
+## qgis_settings.json制御
+### 適用順序は次のとおりです：
 
+```
+qgis_settings.json              ①ベース設定
+  ↓
+qgis_settings_override.json     ②全ユーザー強制オーバーライド（任意）
+  ↓
+qgis_settings_{USERNAME}.json   ③ユーザー個別オーバーライド（任意）← 最終適用
+```
+
+③が最後に適用されるため、ユーザー個別設定（③）は全ユーザー強制オーバーライド（②）より優先されます。
+
+### ファイル配置例
+
+```
+C:\qgis_launcher\
+  qgis_settings.json              ← 全員共通のベース設定
+  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き（任意）
+  qgis_settings_override.json     ← 全ユーザーに強制適用（任意）
+```
+
+### 全ユーザー強制オーバーライド（qgis_settings_override.json）
+
+`qgis_settings.json` と同じディレクトリに `qgis_settings_override.json` を置くと、**ユーザー名に関係なくすべてのユーザーに対して**設定を強制上書きできます。
+
+#### マージ動作
+
+マージルールはユーザーオーバーライドと同じです：
+
+| キー | マージ方式 |
+|---|---|
+| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドは維持） |
+| `path_aliases` | マップキー単位でマージ（未指定キーは維持） |
+| その他のキー | 値ごと置き換え |
+
+#### 用途例
+
+特定の `profile` を全員に強制したい場合：
+
+```json
+{
+  "profile": "corporate_profile"
+}
+```
+
+特定のドライブマウントを全員に強制追加したい場合（他のフィールドはベースのまま）:
+
+```json
+{
+  "rclone_mounts": [
+    {
+      "drive": "S:",
+      "mode": "subst",
+      "local_cache": "C:\\shared_data"
+    }
+  ]
+}
+```
+
+サンプルファイル: [qgis_launcher/download/qgis_settings_override.json.example](qgis_launcher/download/qgis_settings_override.json.example)
+### ユーザーごとの設定オーバーライド（qgis_settings_{USERNAME}.json）
+
+BOX のフォルダ階層はユーザーによって異なる場合があります。`qgis_settings.json` と同じディレクトリに `qgis_settings_{Windowsログイン名}.json` を置くと、全員共通のベース設定を上書きできます。
+
+#### ファイル命名規則
+
+```
+C:\qgis_launcher\
+  qgis_settings.json              ← 全員共通のベース設定
+  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き
+  qgis_settings_tanaka.json       ← tanaka ユーザーのみ上書き
+```
+
+`{USERNAME}` は Windows の `%USERNAME%` 環境変数（ログインユーザー名）と一致させてください。
+
+#### マージ動作
+
+| キー | マージ方式 |
+|---|---|
+| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドはベースを維持） |
+| `path_aliases` | マップキー単位でマージ（未指定キーはベースを維持） |
+| その他のキー | 値ごと置き換え |
+
+#### オーバーライドファイルの例
+
+`robocopy_src` だけを変えたい場合（他のフィールドはベースのまま）:
+
+```json
+{
+  "rclone_mounts": [
+    {
+      "drive": "Q:",
+      "robocopy_src": "BOX:\\MyFolder\\Geo_Portal"
+    }
+  ]
+}
+```
+
+`path_aliases` の BOX パスだけをユーザーごとに変えたい場合:
+
+```json
+{
+  "path_aliases": {
+    "BOX": "D:\\Box"
+  }
+}
+```
+
+サンプルファイル: [qgis_launcher/download/qgis_settings_USERNAME.json.example](qgis_launcher/download/qgis_settings_USERNAME.json.example)
+
+---
 ## ユーザーロール制御
 
 GUI の「User Role」ドロップダウンで `Viewer` / `Editor` / `Administrator` を選択すると、QGIS の UI がロールに応じて制限されます。
@@ -213,7 +323,6 @@ cargo run --release -- --cli
 - 備考: `Cargo.toml` は `fltk-bundled` を feature として利用する設定（`gui` feature）になっており、FLTK をソースからバンドルビルドします。初回ビルドは時間がかかる点に注意してください。
 
 ---
-
 ## クラウドドライブ自動割り当て（rclone_mounts）
 
 QGIS 起動前に任意のフォルダをドライブレターへ自動割り当てする機能です。
@@ -314,120 +423,6 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
 
 ---
 
-## ユーザーごとの設定オーバーライド（qgis_settings_{USERNAME}.json）
-
-BOX のフォルダ階層はユーザーによって異なる場合があります。`qgis_settings.json` と同じディレクトリに `qgis_settings_{Windowsログイン名}.json` を置くと、全員共通のベース設定を上書きできます。
-
-### ファイル命名規則
-
-```
-C:\qgis_launcher\
-  qgis_settings.json              ← 全員共通のベース設定
-  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き
-  qgis_settings_tanaka.json       ← tanaka ユーザーのみ上書き
-```
-
-`{USERNAME}` は Windows の `%USERNAME%` 環境変数（ログインユーザー名）と一致させてください。
-
-### マージ動作
-
-| キー | マージ方式 |
-|---|---|
-| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドはベースを維持） |
-| `path_aliases` | マップキー単位でマージ（未指定キーはベースを維持） |
-| その他のキー | 値ごと置き換え |
-
-### オーバーライドファイルの例
-
-`robocopy_src` だけを変えたい場合（他のフィールドはベースのまま）:
-
-```json
-{
-  "rclone_mounts": [
-    {
-      "drive": "Q:",
-      "robocopy_src": "BOX:\\MyFolder\\Geo_Portal"
-    }
-  ]
-}
-```
-
-`path_aliases` の BOX パスだけをユーザーごとに変えたい場合:
-
-```json
-{
-  "path_aliases": {
-    "BOX": "D:\\Box"
-  }
-}
-```
-
-サンプルファイル: [qgis_launcher/download/qgis_settings_USERNAME.json.example](qgis_launcher/download/qgis_settings_USERNAME.json.example)
-
----
-
-## 全ユーザー強制オーバーライド（qgis_settings_override.json）
-
-`qgis_settings.json` と同じディレクトリに `qgis_settings_override.json` を置くと、**ユーザー名に関係なくすべてのユーザーに対して**設定を強制上書きできます。
-
-適用順序は次のとおりです：
-
-```
-qgis_settings.json              ①ベース設定
-  ↓
-qgis_settings_{USERNAME}.json   ②ユーザー個別オーバーライド（任意）
-  ↓
-qgis_settings_override.json     ③全ユーザー強制オーバーライド（任意）← 最終適用
-```
-
-③が最後に適用されるため、ユーザー個別設定（②）よりも優先されます。
-
-### ファイル配置例
-
-```
-C:\qgis_launcher\
-  qgis_settings.json              ← 全員共通のベース設定
-  qgis_settings_yamamoto.json     ← yamamoto ユーザーのみ上書き（任意）
-  qgis_settings_override.json     ← 全ユーザーに強制適用（任意）
-```
-
-### マージ動作
-
-マージルールはユーザーオーバーライドと同じです：
-
-| キー | マージ方式 |
-|---|---|
-| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドは維持） |
-| `path_aliases` | マップキー単位でマージ（未指定キーは維持） |
-| その他のキー | 値ごと置き換え |
-
-### 用途例
-
-特定の `profile` を全員に強制したい場合：
-
-```json
-{
-  "profile": "corporate_profile"
-}
-```
-
-特定のドライブマウントを全員に強制追加したい場合（他のフィールドはベースのまま）:
-
-```json
-{
-  "rclone_mounts": [
-    {
-      "drive": "S:",
-      "mode": "subst",
-      "local_cache": "C:\\shared_data"
-    }
-  ]
-}
-```
-
-サンプルファイル: [qgis_launcher/download/qgis_settings_override.json.example](qgis_launcher/download/qgis_settings_override.json.example)
-
----
 
 ## ライセンス
 
