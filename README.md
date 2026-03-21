@@ -61,6 +61,8 @@
 
 # QGIS Launcher (qgis_launcher)
 
+
+
 - 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
 - `project_path` の配列対応:
 	- `qgis_settings.json` の `project_path` は「起動候補プロジェクトの一覧」です。文字列と配列の両方を読み込めますが、保存や新しい設定では配列を推奨します。
