@@ -62,7 +62,7 @@ https://yr-geo-portal.vercel.app/
 ---
 
 # QGIS Launcher (qgis_launcher)
-
+　[システム一式ダウンロードはこちらから](https://github.com/yamamoto-ryuzo/Geo_Portal/raw/refs/heads/main/public/qgis_launcher.zip)
 ![alt text](https://github.com/yamamoto-ryuzo/Geo_Portal/blob/main/public/image/qgis_launcher.png)
 
 - 概要: 起動設定（プロファイル / プロジェクトパス / QGIS Version）に基づいて QGIS / QField を起動するランチャーです。設定は `qgis_settings.json`（JSON 構造は `QgisSettings`）で保持できます。
