@@ -49,8 +49,6 @@ pub struct QgisSettings {
     pub qgis_executable: Option<String>,
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
-    pub settings_dir: Option<String>,
-    pub rclone_exe: Option<String>,
     #[serde(default)]
     pub rclone_mounts: Vec<RcloneMount>,
     /// パスエイリアス表。キーが "BOX" なら "BOX:\\path" と書ける。
@@ -72,8 +70,6 @@ impl Default for QgisSettings {
             qgis_executable: None,
             reearth_url: None,
             box_url: None,
-            settings_dir: Some(get_default_settings_dir()),
-            rclone_exe: None,
             rclone_mounts: Vec::new(),
             path_aliases: HashMap::new(),
             userrole: None,
@@ -724,22 +720,10 @@ fn find_qgis_path_from_registry() -> Option<String> {
 
 /// rclone.exe のパスを解決する。
 /// 検索順:
-///   1. settings.rclone_exe で明示指定されたパス
-///   2. qgis_launcher.exe と同じフォルダ
-///   3. settings_dir（設定フォルダ 等）
-///   4. システム PATH
-fn find_rclone_exe(settings: &QgisSettings) -> Option<String> {
-    // 1. 明示指定
-    if let Some(p) = &settings.rclone_exe {
-        let pb = PathBuf::from(p);
-        if pb.is_file() {
-            println!("rclone: 指定パスを使用: {}", p);
-            return Some(p.clone());
-        }
-        eprintln!("rclone: 指定パス '{}' が見つかりません。他の場所を検索します。", p);
-    }
-
-    // 2. qgis_launcher.exe と同じフォルダ
+///   1. qgis_launcher.exe と同じフォルダ
+///   2. システム PATH
+fn find_rclone_exe() -> Option<String> {
+    // 1. qgis_launcher.exe と同じフォルダ
     if let Ok(exe) = env::current_exe() {
         if let Some(parent) = exe.parent() {
             let candidate = parent.join("rclone.exe");
@@ -750,16 +734,7 @@ fn find_rclone_exe(settings: &QgisSettings) -> Option<String> {
         }
     }
 
-    // 3. settings_dir
-    if let Some(dir) = &settings.settings_dir {
-        let candidate = PathBuf::from(dir).join("rclone.exe");
-        if candidate.is_file() {
-            println!("rclone: settings_dirから発見: {:?}", candidate);
-            return Some(candidate.to_string_lossy().to_string());
-        }
-    }
-
-    // 4. システム PATH
+    // 2. システム PATH
     if Command::new("rclone").arg("version").output().is_ok() {
         println!("rclone: システムPATHから使用します。");
         return Some("rclone".to_string());
@@ -860,7 +835,7 @@ fn mount_rclone_drives(mounts: &[RcloneMount], settings: &QgisSettings) {
     if !needs_rclone {
         return;
     }
-    let rclone_path = match find_rclone_exe(settings) {
+    let rclone_path = match find_rclone_exe() {
         Some(p) => p,
         None => return,
     };
