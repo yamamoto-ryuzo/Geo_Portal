@@ -289,14 +289,38 @@ fn get_available_profiles(settings_dir: &str, current_val: &str) -> Vec<String> 
     }
     
     // 1. APPDATA 以下の既存の QGIS プロファイルを検索する
+    // QGIS の実際のプロファイルは通常 `%APPDATA%/QGIS/QGISx/profiles/<name>` にあるため
+    // まず `profiles` サブフォルダを優先して列挙し、存在しなければ互換性のために直下を列挙する。
     for p in qgis_launcher::get_qgis_profile_paths() {
-        if let Ok(entries) = fs::read_dir(&p) {
-            for entry in entries.flatten() {
-                if let Ok(ft) = entry.file_type() {
-                    if ft.is_dir() {
-                        if let Ok(name) = entry.file_name().into_string() {
-                            if !profiles.contains(&name) {
-                                profiles.push(name);
+        let probe = p.join("profiles");
+        if probe.exists() {
+            if let Ok(entries) = fs::read_dir(&probe) {
+                for entry in entries.flatten() {
+                    if let Ok(ft) = entry.file_type() {
+                        if ft.is_dir() {
+                            if let Ok(name) = entry.file_name().into_string() {
+                                if !profiles.contains(&name) {
+                                    profiles.push(name);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if let Ok(entries) = fs::read_dir(&p) {
+                for entry in entries.flatten() {
+                    if let Ok(ft) = entry.file_type() {
+                        if ft.is_dir() {
+                            if let Ok(name) = entry.file_name().into_string() {
+                                // 直下を読む場合、誤って 'profiles' というディレクトリ名を
+                                // プロファイル名として表示してしまうことがあるため除外する。
+                                if name.eq_ignore_ascii_case("profiles") {
+                                    continue;
+                                }
+                                if !profiles.contains(&name) {
+                                    profiles.push(name);
+                                }
                             }
                         }
                     }
@@ -305,37 +329,21 @@ fn get_available_profiles(settings_dir: &str, current_val: &str) -> Vec<String> 
         }
     }
 
-    // 2. settings_dir/profiles (配布・コピー用) のプロファイルを検索する
-    // 構造: profiles/QGIS3/profiles/<プロファイル名>/ または profiles/<プロファイル名>/
-    let p = PathBuf::from(settings_dir).join("profiles");
-    if p.exists() {
-        if let Ok(entries) = fs::read_dir(&p) {
-            for entry in entries.flatten() {
-                if let Ok(ft) = entry.file_type() {
-                    if ft.is_dir() {
-                        let name = entry.file_name().to_string_lossy().to_string();
-                        // QGIS3 / QGIS4 のようなバージョンフォルダ → その中の profiles/ を列挙
-                        let is_version_dir = name.to_uppercase().starts_with("QGIS")
-                            && name[4..].chars().all(|c| c.is_ascii_digit());
-                        if is_version_dir {
-                            let inner = entry.path().join("profiles");
-                            if let Ok(inner_entries) = fs::read_dir(&inner) {
-                                for ie in inner_entries.flatten() {
-                                    if let Ok(ift) = ie.file_type() {
-                                        if ift.is_dir() {
-                                            if let Ok(iname) = ie.file_name().into_string() {
-                                                if !profiles.contains(&iname) {
-                                                    profiles.push(iname);
-                                                }
-                                            }
-                                        }
-                                    }
+    // NOTE: Only enumerate immediate subfolders under `%APPDATA%/QGIS/QGISx/profiles`.
+    // Do not fallback to listing `%APPDATA%/QGIS/QGISx` itself and do not scan
+    // the distribution `settings_dir/profiles` here — this keeps the list limited
+    // to actual QGIS profile folders managed by the installation.
+    for p in qgis_launcher::get_qgis_profile_paths() {
+        let probe = p.join("profiles");
+        if probe.exists() {
+            if let Ok(entries) = fs::read_dir(&probe) {
+                for entry in entries.flatten() {
+                    if let Ok(ft) = entry.file_type() {
+                        if ft.is_dir() {
+                            if let Ok(name) = entry.file_name().into_string() {
+                                if !profiles.contains(&name) {
+                                    profiles.push(name);
                                 }
-                            }
-                        } else {
-                            // バージョンフォルダなし → 直下をプロファイルとして使用
-                            if !profiles.contains(&name) {
-                                profiles.push(name);
                             }
                         }
                     }
