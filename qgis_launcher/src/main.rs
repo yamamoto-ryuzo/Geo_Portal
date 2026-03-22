@@ -13,6 +13,7 @@ use winreg::enums::*;
 /// 子プロセスのコンソールウィンドウを非表示にする Windows フラグ
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 use winreg::RegKey;
+use fltk::misc::Progress;
 
 #[cfg(feature = "gui")]
 use fltk::{prelude::*, *};
@@ -518,10 +519,13 @@ fn run_gui() {
 
     // --- ボタン ---
     let btn_y = status_y + 28;
-    let btn_w = 160;
+    let btn_w = 140;
     let btn_h = 36;
-    let btn_start = (500 - btn_w) / 2; // 中央配置
-    let mut launch_btn = button::Button::new(btn_start, btn_y, btn_w, btn_h, "Launch QGIS");
+    let gap = 12;
+    let total_w = btn_w * 2 + gap;
+    let left = (500 - total_w) / 2; // 中央配置の左端
+    let mut reset_btn = button::Button::new(left, btn_y, btn_w, btn_h, "Reset Profiles");
+    let mut launch_btn = button::Button::new(left + btn_w + gap, btn_y, btn_w, btn_h, "Launch QGIS");
 
     wind.end();
     wind.show();
@@ -529,6 +533,11 @@ fn run_gui() {
     // initial values
     let settings_dir = get_default_settings_dir();
     let settings = get_current_settings(&settings_dir);
+    // resolved settings dir (same logic as main)
+    let resolved_settings_dir = {
+        let p = get_settings_path(&settings_dir);
+        p.parent().map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| settings_dir.clone())
+    };
 
     let project_map = update_choices(&mut profile_in, &mut project_in, &settings_dir, &settings.profile, &settings.project_path);
     role_in.set_value(settings.userrole.as_deref().unwrap_or("Viewer"));
@@ -575,6 +584,69 @@ fn run_gui() {
         }
     } else if let Some((name, _)) = available_versions.first() {
         version_in.set_value(name);
+    }
+
+    // Reset
+    {
+        let profile_in = profile_in.clone();
+        let mut project_in = project_in.clone();
+        let mut status = status.clone();
+        let resolved_settings_dir = resolved_settings_dir.clone();
+        reset_btn.set_callback(move |_| {
+            // FLTK チャネルでバックグラウンドの処理からメッセージを受け取り UI を更新する
+            let (s, r) = std::sync::mpsc::channel::<String>();
+
+            // 進捗ウィンドウ
+            let mut pwin = window::Window::new(220, 180, 360, 120, "Reset Profiles");
+            let mut pframe = frame::Frame::new(12, 12, 336, 24, "Preparing...");
+            let mut pbar = Progress::new(12, 44, 336, 20, "");
+            pbar.set_maximum(100.0);
+            pbar.set_minimum(0.0);
+            pbar.set_value(0.0);
+            pwin.show();
+
+            // バックグラウンドで削除・再構築を実行
+            let sd = resolved_settings_dir.clone();
+            std::thread::spawn(move || {
+                // 送信用ユーティリティ
+                let _ = s.send("MSG:Start".to_string());
+                let res = reset_profiles_with_report(&sd, &s);
+                match res {
+                    Ok(_) => { let _ = s.send("DONE".to_string()); }
+                    Err(e) => { let _ = s.send(format!("ERR:{}", e)); }
+                }
+            });
+
+            // UI スレッドでチャネルをポーリングして表示を更新
+            let mut status_for_idle = status.clone();
+            app::add_idle(move || {
+                while let Ok(msg) = r.try_recv() {
+                    if msg == "DONE" {
+                        pframe.set_label("Profiles reset and rebuilt.");
+                        pframe.redraw();
+                        pbar.set_value(100.0);
+                        pbar.redraw();
+                        pwin.hide();
+                        // メインウィンドウのステータス表示を更新
+                        status_for_idle.set_label("Profiles reset and rebuilt.");
+                        status_for_idle.redraw();
+                    } else if msg.starts_with("ERR:") {
+                        let e = msg.trim_start_matches("ERR:");
+                        pframe.set_label(&format!("Reset failed: {}", e));
+                        pframe.redraw();
+                        pwin.hide();
+                        status_for_idle.set_label(&format!("Reset failed: {}", e));
+                        status_for_idle.redraw();
+                    } else if msg.starts_with("PROG:") {
+                        if let Ok(v) = msg[5..].parse::<f64>() { pbar.set_value(v); pbar.redraw(); }
+                    } else if msg.starts_with("MSG:") {
+                        let m = &msg[4..];
+                        pframe.set_label(m);
+                        pframe.redraw();
+                    }
+                }
+            });
+        });
     }
 
     // Launch
@@ -1077,6 +1149,112 @@ fn copy_profiles_at_startup(settings_dir: &str) {
             }
         }
     }
+}
+
+/// 既存の QGIS プロファイルを強制削除してから配布プロファイルを再コピーする。
+/// 削除対象は `%APPDATA%/QGIS/QGISx/profiles/*` または `%APPDATA%/QGIS/QGISx/*` の直下ディレクトリ。
+fn reset_profiles(settings_dir: &str) -> Result<(), String> {
+    let base_profiles = PathBuf::from(settings_dir).join("profiles");
+    if !base_profiles.exists() {
+        return Err("distribution profiles not found".to_string());
+    }
+
+    let all_profile_paths = qgis_launcher::get_qgis_profile_paths();
+    for p in &all_profile_paths {
+        let probe = p.join("profiles");
+        if probe.exists() {
+            if let Ok(entries) = fs::read_dir(&probe) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                        let path = entry.path();
+                        if let Err(e) = fs::remove_dir_all(&path) {
+                            eprintln!("プロファイル削除失敗 {:?}: {}", path, e);
+                        } else {
+                            println!("削除: {:?}", path);
+                        }
+                    }
+                }
+            }
+        } else {
+            if let Ok(entries) = fs::read_dir(&p) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                        if let Ok(name) = entry.file_name().into_string() {
+                            if name.eq_ignore_ascii_case("profiles") { continue; }
+                        }
+                        let path = entry.path();
+                        if let Err(e) = fs::remove_dir_all(&path) {
+                            eprintln!("プロファイル削除失敗 {:?}: {}", path, e);
+                        } else {
+                            println!("削除: {:?}", path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // コピーして再構築
+    copy_profiles_at_startup(settings_dir);
+    Ok(())
+}
+
+/// reset_profiles の処理を行いながら `sender` に進捗・メッセージを送る。
+fn reset_profiles_with_report(settings_dir: &str, sender: &std::sync::mpsc::Sender<String>) -> Result<(), String> {
+    let base_profiles = PathBuf::from(settings_dir).join("profiles");
+    if !base_profiles.exists() {
+        let _ = sender.send("MSG:distribution profiles not found".to_string());
+        return Err("distribution profiles not found".to_string());
+    }
+
+    let all_profile_paths = qgis_launcher::get_qgis_profile_paths();
+    // 事前に削除対象の数を数えて進捗を出す
+    let mut targets = Vec::new();
+    for p in &all_profile_paths {
+        let probe = p.join("profiles");
+        if probe.exists() {
+            if let Ok(entries) = fs::read_dir(&probe) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                        targets.push(entry.path());
+                    }
+                }
+            }
+        } else {
+            if let Ok(entries) = fs::read_dir(&p) {
+                for entry in entries.flatten() {
+                    if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                        if let Ok(name) = entry.file_name().into_string() {
+                            if name.eq_ignore_ascii_case("profiles") { continue; }
+                        }
+                        targets.push(entry.path());
+                    }
+                }
+            }
+        }
+    }
+
+    let total = targets.len().max(1) as f64;
+    for (i, path) in targets.into_iter().enumerate() {
+        let label = format!("Deleting {:?}", path.file_name().unwrap_or_default());
+        let _ = sender.send(format!("MSG:{}", label));
+        if let Err(e) = fs::remove_dir_all(&path) {
+            let _ = sender.send(format!("MSG:failed to remove {:?}: {}", path, e));
+        }
+        let perc = ((i + 1) as f64) / total * 50.0; // 削除フェーズは0-50%
+        let _ = sender.send(format!("PROG:{}", perc));
+    }
+
+    // コピー（再構築）開始
+    let _ = sender.send("MSG:Rebuilding profiles...".to_string());
+    // copy_profiles_at_startup は内部で複数の処理を行うが簡易的に進捗は50->90%に設定
+    copy_profiles_at_startup(settings_dir);
+    let _ = sender.send(format!("PROG:{}", 90.0));
+
+    // 最終処理
+    let _ = sender.send("MSG:Finalizing...".to_string());
+    let _ = sender.send(format!("PROG:{}", 98.0));
+    Ok(())
 }
 
 /// 実行フォルダ/ini/<role>.ini のパスを返す。存在しない場合は None。
