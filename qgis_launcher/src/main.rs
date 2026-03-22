@@ -50,7 +50,7 @@ pub struct QgisSettings {
     pub reearth_url: Option<String>,
     pub box_url: Option<String>,
     #[serde(default)]
-    pub rclone_mounts: Vec<RcloneMount>,
+    pub drive_mappings: Vec<RcloneMount>,
     /// パスエイリアス表。キーが "BOX" なら "BOX:\\path" と書ける。
     /// デフォルト: {"BOX": "%USERPROFILE%\\Box"}
     #[serde(default)]
@@ -70,7 +70,7 @@ impl Default for QgisSettings {
             qgis_executable: None,
             reearth_url: None,
             box_url: None,
-            rclone_mounts: Vec::new(),
+            drive_mappings: Vec::new(),
             path_aliases: HashMap::new(),
             userrole: None,
             current_project: None,
@@ -204,7 +204,7 @@ fn apply_override_value(mut base: serde_json::Value, override_path: &PathBuf) ->
                                 }
                             }
                         }
-                        "rclone_mounts" => {
+                        "drive_mappings" => {
                             if let Some(over_mounts) = v.as_array() {
                                 let base_mounts = base_obj
                                     .entry(k)
@@ -640,7 +640,7 @@ fn main() {
     let settings = get_current_settings(&settings_dir);
 
     // EXE 起動時にドライブ割り当て・robocopy を実行（GUI/CLI 共通）
-    mount_rclone_drives(&settings.rclone_mounts, &settings);
+    mount_drive_mappings(&settings.drive_mappings, &settings);
     // EXE 起動時にインストール済みQGISバージョンを検出してプロファイルをコピー
     // get_settings_path と同じフォールバックロジックで実際の settings_dir を解決する
     let resolved_settings_dir = {
@@ -822,8 +822,8 @@ fn resolve_path(s: &str, aliases: &HashMap<String, String>) -> String {
     expand_env_vars(&resolved)
 }
 
-/// rclone_mounts の設定に従って rclone マウント / 同期を起動する。
-fn mount_rclone_drives(mounts: &[RcloneMount], settings: &QgisSettings) {
+/// `drive_mappings` の設定に従ってマウント / 同期を起動する。
+fn mount_drive_mappings(mounts: &[RcloneMount], settings: &QgisSettings) {
     if mounts.is_empty() {
         return;
     }

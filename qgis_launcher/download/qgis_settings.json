@@ -6,7 +6,7 @@
   "qgis_executable": "C:\\Program Files\\QGIS 4.0.0\\bin\\qgis.bat",
   "reearth_url": null,
   "box_url": null,
-  "rclone_mounts": [
+  "drive_mappings": [
     {
       "remote": null,
       "drive": "Q:",

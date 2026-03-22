@@ -66,10 +66,13 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     return (initialSettings && initialSettings.path_aliases) || { BOX: "%USERPROFILE%\\Box" };
   });
 
-  const [rcloneMounts, setRcloneMounts] = useState(() => {
+  // NOTE: `drive_mappings` 設定は互換性のために読み書き・保持しますが、
+  // ブラウザ実行コンテキストでは rclone を起動したりマウント処理を行いません。
+  // 実際のマウントや rclone の実行はローカルの `qgis_launcher` 実行環境が担います。
+  const [driveMappings, setDriveMappings] = useState(() => {
     const saved = getSavedSettings();
-    if (saved && saved.rclone_mounts) return saved.rclone_mounts;
-    return (initialSettings && initialSettings.rclone_mounts) || [];
+    if (saved && saved.drive_mappings) return saved.drive_mappings;
+    return (initialSettings && initialSettings.drive_mappings) || [];
   });
 
   const [previewReearth, setPreviewReearth] = useState(reearthUrl);
@@ -77,7 +80,7 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
   const [previewQgisProfile, setPreviewQgisProfile] = useState(qgisProfile);
   const [previewQgisProjectPath, setPreviewQgisProjectPath] = useState(toProjectPathArray(qgisProjectPath));
   const [previewPathAliases, setPreviewPathAliases] = useState(pathAliases);
-  const [previewRcloneMounts, setPreviewRcloneMounts] = useState(rcloneMounts);
+  const [previewDriveMappings, setPreviewDriveMappings] = useState(driveMappings);
 
   // 起動時: localStorage に保存値がなければ initialSettings (SSR) を適用済みのためフェッチ不要
 
@@ -99,8 +102,8 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setPreviewPathAliases(pathAliases);
   }, [pathAliases]);
   useEffect(() => {
-    setPreviewRcloneMounts(rcloneMounts);
-  }, [rcloneMounts]);
+    setPreviewDriveMappings(driveMappings);
+  }, [driveMappings]);
 
   function applyPreview() {
     setReearthUrl(previewReearth);
@@ -108,7 +111,7 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setQgisProfile(previewQgisProfile);
     setQgisProjectPath(previewQgisProjectPath);
     setPathAliases(previewPathAliases);
-    setRcloneMounts(previewRcloneMounts);
+    setDriveMappings(previewDriveMappings);
   }
 
   // Apply loaded settings (from file) to preview and active states in one place
@@ -134,9 +137,9 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
       setPreviewPathAliases(data.path_aliases);
       setPathAliases(data.path_aliases);
     }
-    if (data.rclone_mounts !== undefined) {
-      setPreviewRcloneMounts(data.rclone_mounts);
-      setRcloneMounts(data.rclone_mounts);
+    if (data.drive_mappings !== undefined) {
+      setPreviewDriveMappings(data.drive_mappings);
+      setDriveMappings(data.drive_mappings);
     }
     // Persist the whole settings object for full restore
     try {
@@ -183,7 +186,7 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         reearth_url: reearthUrl,
         box_url: boxUrl,
         path_aliases: pathAliases,
-        rclone_mounts: rcloneMounts
+        drive_mappings: driveMappings
       };
       localStorage.setItem('portal:settings', JSON.stringify(payload));
       return true;
@@ -202,7 +205,7 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         reearth_url: previewReearth,
         box_url: previewBox,
         path_aliases: previewPathAliases,
-        rclone_mounts: previewRcloneMounts
+        drive_mappings: previewDriveMappings
       };
       localStorage.setItem('portal:settings', JSON.stringify(payload));
     } catch (e) {}
@@ -226,7 +229,7 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
       reearth_url: previewReearth,
       box_url: previewBox,
       path_aliases: previewPathAliases,
-      rclone_mounts: previewRcloneMounts
+      drive_mappings: previewDriveMappings
     };
     try {
       // Preferred: showSaveFilePicker (allows user to choose exact file)
@@ -271,13 +274,13 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
     setPreviewQgisProfile("default");
     setPreviewQgisProjectPath([]);
     setPreviewPathAliases({ BOX: "%USERPROFILE%\\Box" });
-    setPreviewRcloneMounts([]);
+    setPreviewDriveMappings([]);
     setReearthUrl(reearth || "");
     setBoxUrl(box || "");
     setQgisProfile("default");
     setQgisProjectPath([]);
     setPathAliases({ BOX: "%USERPROFILE%\\Box" });
-    setRcloneMounts([]);
+    setDriveMappings([]);
     try {
       localStorage.removeItem('portal:settings');
     } catch (e) {}
@@ -294,13 +297,13 @@ export function PortalProvider({ children, initialReearth, initialBox, initialSe
         previewQgisProfile,
         previewQgisProjectPath,
         previewPathAliases,
-        previewRcloneMounts,
+        previewDriveMappings,
         setPreviewReearth,
         setPreviewBox,
         setPreviewQgisProfile,
         setPreviewQgisProjectPath,
         setPreviewPathAliases,
-        setPreviewRcloneMounts,
+        setPreviewDriveMappings,
         applyPreview,
         save,
         resetTo,
