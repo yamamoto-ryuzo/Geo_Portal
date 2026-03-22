@@ -4,6 +4,6 @@
   "_comment3": "全ユーザーに強制したい設定をここに記述してください。",
   "_comment4": "マージルールは qgis_settings_{USERNAME}.json と同じです:",
   "_comment5": "  path_aliases → キー単位でマージ（未指定キーは維持）",
-  "_comment6": "  rclone_mounts → drive キーで照合してフィールド単位でマージ",
+  "_comment6": "  drive_mappings → drive キーで照合してフィールド単位でマージ",
   "_comment7": "  その他のキー → 値ごと上書き"
 }

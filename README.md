@@ -1,4 +1,4 @@
-# Geo_Portal　バージョン: 1.0.1
+# Geo_Portal　バージョン: 1.0.2
 
 このリポジトリでは「左パネルは操作／コントロール、右パネルは表示／詳細」を原則とするマスタ詳細パターンを採用しています。　　
 
@@ -156,7 +156,7 @@ C:\qgis_launcher\
 
 | キー | マージ方式 |
 |---|---|
-| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドは維持） |
+| `drive_mappings` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドは維持） |
 | `path_aliases` | マップキー単位でマージ（未指定キーは維持） |
 | その他のキー | 値ごと置き換え |
 
@@ -174,7 +174,7 @@ C:\qgis_launcher\
 
 ```json
 {
-  "rclone_mounts": [
+  "drive_mappings": [
     {
       "drive": "S:",
       "mode": "subst",
@@ -204,7 +204,7 @@ C:\qgis_launcher\
 
 | キー | マージ方式 |
 |---|---|
-| `rclone_mounts` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドはベースを維持） |
+| `drive_mappings` | `drive` キーで既存エントリを照合してフィールド単位で上書き（未指定フィールドはベースを維持） |
 | `path_aliases` | マップキー単位でマージ（未指定キーはベースを維持） |
 | その他のキー | 値ごと置き換え |
 
@@ -214,7 +214,7 @@ C:\qgis_launcher\
 
 ```json
 {
-  "rclone_mounts": [
+  "drive_mappings": [
     {
       "drive": "Q:",
       "robocopy_src": "BOX:\\MyFolder\\Geo_Portal"
@@ -323,7 +323,11 @@ cargo run --release -- --cli
 - 備考: `Cargo.toml` は `fltk-bundled` を feature として利用する設定（`gui` feature）になっており、FLTK をソースからバンドルビルドします。初回ビルドは時間がかかる点に注意してください。
 
 ---
-## クラウドドライブ自動割り当て（rclone_mounts）
+## クラウドドライブ自動割り当て（drive_mappings）
+
+※注意: Web ポータル（ブラウザ）側では `rclone` を実行してマウントする処理は行いません。
+`drive_mappings` 設定は互換性のため読み書き・保持しますが、実際のドライブ割り当てや rclone の起動は
+ローカルの `qgis_launcher` 実行環境（ランチャー）側でのみ行われます。ランチャーを使用しない環境ではこの設定は無視されます。
 
 QGIS 起動前に任意のフォルダをドライブレターへ自動割り当てする機能です。
 追加インストール不要の `subst` モードを採用しています。
@@ -371,7 +375,7 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
     "OneDriveBiz": "%OneDriveCommercial%",
     "GoogleDrive": "G:\\マイドライブ"
   },
-  "rclone_mounts": [
+  "drive_mappings": [
     {
       "drive": "Q:",
       "mode": "subst",

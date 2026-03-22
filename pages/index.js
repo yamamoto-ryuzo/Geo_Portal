@@ -32,9 +32,9 @@ function Inner() {
   const {
     reearthUrl, previewReearth, setPreviewReearth,
     previewQgisProfile, previewQgisProjectPath,
-    previewPathAliases, previewRcloneMounts,
+    previewPathAliases, previewDriveMappings,
     setPreviewQgisProfile, setPreviewQgisProjectPath,
-    setPreviewPathAliases, setPreviewRcloneMounts,
+    setPreviewPathAliases, setPreviewDriveMappings,
     applyPreview, save, resetTo, applyPreviewAndSave, saveToFs, loadSettingsFromFile, loadSettingsFromDir
   } = usePortal();
 
@@ -337,17 +337,22 @@ function Inner() {
 
                 {/* ドライブ割り当て */}
                 <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>💾 ドライブ割り当て (rclone_mounts)</h4>
-                  <p style={{ fontSize: '0.82rem', color: '#666', margin: '0 0 12px 0' }}>
-                    QGIS起動前に subst でフォルダをドライブレターへ自動割り当てします。
-                  </p>
-                  {(previewRcloneMounts || []).map((mount, i) => (
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>💾 ドライブ割り当て (drive_mappings)</h4>
+                    <p style={{ fontSize: '0.9rem', color: '#b45309', margin: '0 0 12px 0' }}>
+                      注意: ブラウザ側では rclone や自動マウント処理を実行しません。
+                      ここで表示される `drive_mappings` は互換性のための表示であり、実際のマウントはローカルの `qgis_launcher` によって行われます。
+                    </p>
+                    <p style={{ fontSize: '0.82rem', color: '#666', margin: '0 0 12px 0' }}>
+                      QGIS起動前に subst でフォルダをドライブレターへ自動割り当てします。
+                    </p>
+                  {(previewDriveMappings || []).map((mount, i) => (
                     <div key={i} style={{ background: 'white', border: '1px solid #d1d5db', borderRadius: '6px', padding: '12px', marginBottom: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <span style={{ fontWeight: 'bold', fontFamily: 'monospace', fontSize: '0.95rem', color: '#1d4ed8' }}>{mount.drive || '(ドライブ未設定)'}</span>
                         <button
-                          onClick={() => setPreviewRcloneMounts(previewRcloneMounts.filter((_, idx) => idx !== i))}
-                          style={{ padding: '3px 10px', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.82rem' }}
+                          disabled
+                          title="ブラウザでは削除できません。ローカルの qgis_launcher 側で管理してください。"
+                          style={{ padding: '3px 10px', background: '#f3f4f6', color: '#9ca3af', border: 'none', borderRadius: '4px', cursor: 'not-allowed', fontSize: '0.82rem' }}
                         >削除</button>
                       </div>
                       {[
@@ -358,17 +363,13 @@ function Inner() {
                       ].map(({ field, label, placeholder }) => (
                         <div key={field} style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '7px' }}>
                           <label style={{ width: '200px', fontSize: '0.83rem', color: '#555', flexShrink: 0 }}>{label}</label>
-                          <input
-                            type="text"
-                            value={mount[field] || ''}
-                            onChange={(e) => {
-                              const updated = [...previewRcloneMounts];
-                              updated[i] = { ...updated[i], [field]: e.target.value };
-                              setPreviewRcloneMounts(updated);
-                            }}
-                            style={{ flex: 1, padding: '5px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem' }}
-                            placeholder={placeholder}
-                          />
+                              <input
+                                type="text"
+                                value={mount[field] || ''}
+                                readOnly
+                                style={{ flex: 1, padding: '5px 8px', border: '1px solid #e6edf3', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem', background: '#f8fafc', color: '#374151' }}
+                                placeholder={placeholder}
+                              />
                         </div>
                       ))}
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', marginBottom: '7px' }}>
@@ -376,20 +377,17 @@ function Inner() {
                         <input
                           type="text"
                           value={(mount.robocopy_exclude || []).join(', ')}
-                          onChange={(e) => {
-                            const updated = [...previewRcloneMounts];
-                            updated[i] = { ...updated[i], robocopy_exclude: e.target.value.split(',').map(s => s.trim()).filter(Boolean) };
-                            setPreviewRcloneMounts(updated);
-                          }}
-                          style={{ flex: 1, padding: '5px 8px', border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem' }}
+                          readOnly
+                          style={{ flex: 1, padding: '5px 8px', border: '1px solid #e6edf3', borderRadius: '4px', fontFamily: 'monospace', fontSize: '0.83rem', background: '#f8fafc', color: '#374151' }}
                           placeholder="secret-folder, private-data"
                         />
                       </div>
                     </div>
                   ))}
                   <button
-                    onClick={() => setPreviewRcloneMounts([...(previewRcloneMounts || []), { drive: '', mode: 'subst', local_cache: '', robocopy_src: '', robocopy_exclude: [] }])}
-                    style={{ padding: '6px 14px', background: '#e0f2fe', color: '#0369a1', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', marginTop: '4px' }}
+                    disabled
+                    title="ブラウザでは追加できません。ローカルの qgis_launcher 側で設定してください。"
+                    style={{ padding: '6px 14px', background: '#f3f4f6', color: '#9ca3af', border: 'none', borderRadius: '4px', cursor: 'not-allowed', fontSize: '0.85rem', marginTop: '4px' }}
                   >＋ ドライブを追加</button>
                 </div>
 
