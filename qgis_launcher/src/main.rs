@@ -14,6 +14,13 @@ use winreg::enums::*;
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 use winreg::RegKey;
 use fltk::misc::Progress;
+use quick_xml::Reader;
+use quick_xml::events::Event;
+use quick_xml::name::QName;
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use zip::ZipArchive;
+use std::io::Read;
 
 #[cfg(feature = "gui")]
 use fltk::{prelude::*, *};
@@ -463,7 +470,7 @@ fn run_gui() {
     let app = app::App::default();
 
     // --- ウィンドウ ---
-    let mut wind = window::Window::new(200, 150, 500, 302, "QGIS Launcher");
+    let mut wind = window::Window::new(200, 150, 500, 360, "QGIS Launcher");
     wind.set_color(enums::Color::from_rgb(245, 245, 245));
 
     // --- タイトル ---
@@ -490,13 +497,22 @@ fn run_gui() {
     project_label.set_label_size(13);
     let mut project_in = misc::InputChoice::new(ix, y2, iw, row_h, "");
 
+    // Project File Version を Project Path の直下に配置
     let y3 = y2 + row_h + 14;
-    let mut version_label = frame::Frame::new(lx, y3, lw, row_h, "QGIS Version:");
+    let mut proj_ver_label = frame::Frame::new(lx, y3, lw, row_h, "Project File Version:");
+    proj_ver_label.set_align(Align::Right | Align::Inside);
+    proj_ver_label.set_label_size(13);
+    let mut proj_ver_frame = frame::Frame::new(ix, y3, iw, row_h, "");
+    proj_ver_frame.set_label_size(13);
+
+    // QGIS Version はその下に置く
+    let y3b = y3 + row_h + 14;
+    let mut version_label = frame::Frame::new(lx, y3b, lw, row_h, "QGIS Version:");
     version_label.set_align(Align::Right | Align::Inside);
     version_label.set_label_size(13);
-    let mut version_in = misc::InputChoice::new(ix, y3, iw, row_h, "");
+    let mut version_in = misc::InputChoice::new(ix, y3b, iw, row_h, "");
 
-    let y4 = y3 + row_h + 14;
+    let y4 = y3b + row_h + 14;
     let mut role_label = frame::Frame::new(lx, y4, lw, row_h, "User Role:");
     role_label.set_align(Align::Right | Align::Inside);
     role_label.set_label_size(13);
@@ -584,6 +600,49 @@ fn run_gui() {
         }
     } else if let Some((name, _)) = available_versions.first() {
         version_in.set_value(name);
+    }
+
+    // プロジェクト選択が変わったとき、選択された1つだけを解析してバージョン表示を更新する。
+    // 解析は最小限: 選択されたプロジェクトファイル1つのみを対象にする。
+    {
+        // キャッシュを作成し、クロージャへ渡す
+        let version_cache: VersionCache = Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let project_map_for_closure = project_map.clone();
+        let project_map_for_init = project_map.clone();
+        let mut project_in_for_closure = project_in.clone();
+        let mut proj_ver_for_closure = proj_ver_frame.clone();
+        let mut proj_ver_for_init = proj_ver_frame.clone();
+        let cache_for_closure = version_cache.clone();
+
+        project_in_for_closure.set_callback(move |w| {
+            let display = w.value().unwrap_or_default();
+            let actual = project_map_for_closure.iter()
+                .find(|(d, _)| d == &display)
+                .map(|(_, a)| a.clone())
+                .unwrap_or(display.clone());
+
+            if actual.to_lowercase().ends_with(".qgz") || actual.to_lowercase().ends_with(".qgs") {
+                if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
+                    proj_ver_for_closure.set_label(&ver);
+                } else {
+                    proj_ver_for_closure.set_label("");
+                }
+            } else {
+                proj_ver_for_closure.set_label("");
+            }
+        });
+
+        // 初期表示用に一度実行しておく（closure に渡したクローンとは別）
+        let initial_display = project_in.value().unwrap_or_default();
+        let initial_actual = project_map_for_init.iter()
+            .find(|(d, _)| d == &initial_display)
+            .map(|(_, a)| a.clone())
+            .unwrap_or(initial_display.clone());
+        if !initial_actual.is_empty() {
+            if let Some(ver) = get_project_version_cached(&initial_actual, &version_cache) {
+                proj_ver_for_init.set_label(&ver);
+            }
+        }
     }
 
     // Reset
@@ -1604,4 +1663,90 @@ fn get_available_qgis_versions() -> Vec<(String, String)> {
     }
 
     unique_versions
+}
+
+/// 指定した .qgs/.qgz プロジェクトファイルの <qgis> ルート要素から
+/// `version` 属性を抽出して返す。失敗した場合は None。
+fn parse_qgs_version_from_str(xml: &str) -> Option<String> {
+    let mut reader = Reader::from_str(xml);
+    reader.trim_text(true);
+    let mut buf = Vec::new();
+    loop {
+        match reader.read_event_into(&mut buf) {
+            Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
+                if e.name() == QName(b"qgis") {
+                    for a in e.attributes().flatten() {
+                        if a.key.as_ref() == b"version" {
+                            if let Ok(val) = a.unescape_value() {
+                                return Some(val.into_owned());
+                            }
+                        }
+                    }
+                    return None;
+                }
+            }
+            Ok(Event::Eof) => break,
+            Err(_) => break,
+            _ => {}
+        }
+        buf.clear();
+    }
+    None
+}
+
+fn get_project_file_version(path: &str) -> Option<String> {
+    let lower = path.to_lowercase();
+    if lower.ends_with(".qgz") {
+        // open as zip and find the first .qgs entry
+        let f = std::fs::File::open(path).ok()?;
+        let mut zip = ZipArchive::new(f).ok()?;
+        for i in 0..zip.len() {
+            if let Ok(mut file) = zip.by_index(i) {
+                let name = file.name().to_lowercase();
+                if name.ends_with(".qgs") {
+                    let mut s = String::new();
+                    if file.read_to_string(&mut s).is_ok() {
+                        return parse_qgs_version_from_str(&s);
+                    }
+                }
+            }
+        }
+        None
+    } else {
+        if let Ok(s) = std::fs::read_to_string(path) {
+            parse_qgs_version_from_str(&s)
+        } else {
+            None
+        }
+    }
+}
+
+type VersionCache = Arc<Mutex<std::collections::HashMap<String, (SystemTime, String)>>>;
+
+fn get_project_version_cached(path: &str, cache: &VersionCache) -> Option<String> {
+    let key = path.to_string();
+    let mtime = std::fs::metadata(path).and_then(|m| m.modified()).ok();
+
+    // check cache
+    {
+        let lock = cache.lock().unwrap();
+        if let Some((cached_mtime, ver)) = lock.get(&key) {
+            if let Some(m) = mtime {
+                if &m == cached_mtime {
+                    return Some(ver.clone());
+                }
+            } else {
+                return Some(ver.clone());
+            }
+        }
+    }
+
+    // compute
+    if let Some(ver) = get_project_file_version(path) {
+        let mut lock = cache.lock().unwrap();
+        lock.insert(key, (mtime.unwrap_or(SystemTime::UNIX_EPOCH), ver.clone()));
+        Some(ver)
+    } else {
+        None
+    }
 }
