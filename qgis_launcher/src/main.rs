@@ -609,20 +609,27 @@ fn run_gui() {
     // 1) settings.qgis_executable が指定されていればそれを表示
     // 2) それ以外でプロジェクトバージョンが取得でき、マッチする候補があればそれを初期選択
     // 3) どれもなければ最初の候補
+    // まず設定値／候補のいずれかを表示
     if let Some(exe) = &settings.qgis_executable {
         if let Some((name, _)) = available_versions.iter().find(|(_, path)| path == exe) {
             version_in.set_value(name);
         } else {
             version_in.set_value(exe);
         }
-    } else if let Some(ver) = &initial_project_version {
-        if let Some((name, _)) = find_matching_available_for_project(ver, &available_versions) {
-            version_in.set_value(&name);
-        } else if let Some((name, _)) = available_versions.first() {
-            version_in.set_value(name);
-        }
     } else if let Some((name, _)) = available_versions.first() {
         version_in.set_value(name);
+    }
+
+    // プロジェクトバージョンが得られている場合、保存済み選択がプロジェクトの major を含まない
+    // 場合は自動選択で上書きする
+    if let Some(ver) = &initial_project_version {
+        if let Some((match_name, _)) = find_matching_available_for_project(ver, &available_versions) {
+            let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
+            let current_sel = version_in.value().unwrap_or_default().to_lowercase();
+            if current_sel.is_empty() || !current_sel.contains(&proj_major) {
+                version_in.set_value(&match_name);
+            }
+        }
     }
 
     // プロジェクト選択が変わったとき、選択された1つだけを解析してバージョン表示を更新する。
