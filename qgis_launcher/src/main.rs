@@ -597,10 +597,16 @@ fn run_gui() {
         .map(|(_, a)| a.clone())
         .unwrap_or(initial_display.clone());
     let initial_project_version = if !initial_actual.is_empty() {
-        get_project_version_cached(&initial_actual, &version_cache)
+        let v = get_project_version_cached(&initial_actual, &version_cache);
+        println!("DEBUG: initial_actual='{}' -> project_version={:?}", initial_actual, v);
+        v
     } else { None };
 
     let available_versions = get_available_qgis_versions();
+    println!("DEBUG: available_versions count={}", available_versions.len());
+    for (n, p) in &available_versions {
+        println!("DEBUG: candidate: '{}' -> {}", n, p);
+    }
     for (name, _) in &available_versions {
         version_in.add(name);
     }
@@ -623,12 +629,19 @@ fn run_gui() {
     // プロジェクトバージョンが得られている場合、保存済み選択がプロジェクトの major を含まない
     // 場合は自動選択で上書きする
     if let Some(ver) = &initial_project_version {
-        if let Some((match_name, _)) = find_matching_available_for_project(ver, &available_versions) {
+        println!("DEBUG: initial_project_version='{}'", ver);
+        if let Some((match_name, match_path)) = find_matching_available_for_project(ver, &available_versions) {
             let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
             let current_sel = version_in.value().unwrap_or_default().to_lowercase();
+            println!("DEBUG: current_sel='{}', proj_major='{}', match_name='{}', match_path='{}'", current_sel, proj_major, match_name, match_path);
             if current_sel.is_empty() || !current_sel.contains(&proj_major) {
+                println!("DEBUG: overriding selection to '{}'", match_name);
                 version_in.set_value(&match_name);
+            } else {
+                println!("DEBUG: keeping current selection '{}'", current_sel);
             }
+        } else {
+            println!("DEBUG: no matching available version found for project version '{}'", ver);
         }
     }
 
@@ -652,18 +665,21 @@ fn run_gui() {
                 .unwrap_or(display.clone());
 
             if actual.to_lowercase().ends_with(".qgz") || actual.to_lowercase().ends_with(".qgs") {
-                if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
-                    proj_ver_for_closure.set_label(&ver);
-                    if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
-                        let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
-                        let current_sel = version_in_for_closure.value().unwrap_or_default().to_lowercase();
-                        if !current_sel.contains(&proj_major) {
-                            version_in_for_closure.set_value(&name);
+                    if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
+                        proj_ver_for_closure.set_label(&ver);
+                        println!("DEBUG(callback): selected actual='{}' -> project_version='{}'", actual, ver);
+                        if let Some((name, path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
+                            let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
+                            let current_sel = version_in_for_closure.value().unwrap_or_default().to_lowercase();
+                            println!("DEBUG(callback): match_name='{}', match_path='{}', current_sel='{}', proj_major='{}'", name, path, current_sel, proj_major);
+                            if !current_sel.contains(&proj_major) {
+                                println!("DEBUG(callback): overriding selection to '{}'", name);
+                                version_in_for_closure.set_value(&name);
+                            }
                         }
+                    } else {
+                        proj_ver_for_closure.set_label("");
                     }
-                } else {
-                    proj_ver_for_closure.set_label("");
-                }
             } else {
                 proj_ver_for_closure.set_label("");
             }
