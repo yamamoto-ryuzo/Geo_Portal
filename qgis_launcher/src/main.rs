@@ -587,16 +587,39 @@ fn run_gui() {
         }
     }
 
+    // バージョン解析キャッシュを先に作成し、プロジェクトのバージョンを取得してから
+    // QGIS 実行ファイル候補を列挙することで、初期選択に反映できるようにする。
+    let version_cache: VersionCache = Arc::new(Mutex::new(std::collections::HashMap::new()));
+    // 初期表示用の選択中プロジェクトを解決して、バージョンを先に取得しておく
+    let initial_display = project_in.value().unwrap_or_default();
+    let initial_actual = project_map.iter()
+        .find(|(d, _)| d == &initial_display)
+        .map(|(_, a)| a.clone())
+        .unwrap_or(initial_display.clone());
+    let initial_project_version = if !initial_actual.is_empty() {
+        get_project_version_cached(&initial_actual, &version_cache)
+    } else { None };
+
     let available_versions = get_available_qgis_versions();
     for (name, _) in &available_versions {
         version_in.add(name);
     }
 
+    // 優先ルール:
+    // 1) settings.qgis_executable が指定されていればそれを表示
+    // 2) それ以外でプロジェクトバージョンが取得でき、マッチする候補があればそれを初期選択
+    // 3) どれもなければ最初の候補
     if let Some(exe) = &settings.qgis_executable {
         if let Some((name, _)) = available_versions.iter().find(|(_, path)| path == exe) {
             version_in.set_value(name);
         } else {
             version_in.set_value(exe);
+        }
+    } else if let Some(ver) = &initial_project_version {
+        if let Some((name, _)) = find_matching_available_for_project(ver, &available_versions) {
+            version_in.set_value(&name);
+        } else if let Some((name, _)) = available_versions.first() {
+            version_in.set_value(name);
         }
     } else if let Some((name, _)) = available_versions.first() {
         version_in.set_value(name);
@@ -605,8 +628,6 @@ fn run_gui() {
     // プロジェクト選択が変わったとき、選択された1つだけを解析してバージョン表示を更新する。
     // 解析は最小限: 選択されたプロジェクトファイル1つのみを対象にする。
     {
-        // キャッシュを作成し、クロージャへ渡す
-        let version_cache: VersionCache = Arc::new(Mutex::new(std::collections::HashMap::new()));
         let project_map_for_closure = project_map.clone();
         let project_map_for_init = project_map.clone();
         let mut project_in_for_closure = project_in.clone();
@@ -641,27 +662,9 @@ fn run_gui() {
             }
         });
 
-        // 初期表示用に一度実行しておく（closure に渡したクローンとは別）
-        let initial_display = project_in.value().unwrap_or_default();
-        let initial_actual = project_map_for_init.iter()
-            .find(|(d, _)| d == &initial_display)
-            .map(|(_, a)| a.clone())
-            .unwrap_or(initial_display.clone());
-        if !initial_actual.is_empty() {
-            if let Some(ver) = get_project_version_cached(&initial_actual, &version_cache) {
-                proj_ver_for_init.set_label(&ver);
-                if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions) {
-                    // project major (e.g. "4" from "4.0.0-...")
-                    let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
-                    let current_sel = version_in.value().unwrap_or_default().to_lowercase();
-                    // 自動選択の条件:
-                    // - 設定に qgis_executable がない
-                    // - または 現在選択中の QGIS 表示名がプロジェクトの major を含まない
-                    if settings.qgis_executable.is_none() || !current_sel.contains(&proj_major) {
-                        version_in.set_value(&name);
-                    }
-                }
-            }
+        // 初期表示用に一度ラベルをセットしておく（先に取得済みの initial_project_version を使用）
+        if let Some(ver) = &initial_project_version {
+            proj_ver_for_init.set_label(ver);
         }
     }
 
