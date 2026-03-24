@@ -591,7 +591,7 @@ fn run_gui() {
     for (name, _) in &available_versions {
         version_in.add(name);
     }
-    
+
     if let Some(exe) = &settings.qgis_executable {
         if let Some((name, _)) = available_versions.iter().find(|(_, path)| path == exe) {
             version_in.set_value(name);
@@ -614,6 +614,8 @@ fn run_gui() {
         let mut proj_ver_for_init = proj_ver_frame.clone();
         let cache_for_closure = version_cache.clone();
 
+        let available_versions_for_closure = available_versions.clone();
+        let mut version_in_for_closure = version_in.clone();
         project_in_for_closure.set_callback(move |w| {
             let display = w.value().unwrap_or_default();
             let actual = project_map_for_closure.iter()
@@ -624,6 +626,9 @@ fn run_gui() {
             if actual.to_lowercase().ends_with(".qgz") || actual.to_lowercase().ends_with(".qgs") {
                 if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
                     proj_ver_for_closure.set_label(&ver);
+                    if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
+                        version_in_for_closure.set_value(&name);
+                    }
                 } else {
                     proj_ver_for_closure.set_label("");
                 }
@@ -641,6 +646,12 @@ fn run_gui() {
         if !initial_actual.is_empty() {
             if let Some(ver) = get_project_version_cached(&initial_actual, &version_cache) {
                 proj_ver_for_init.set_label(&ver);
+                // 自動選択: 設定に qgis_executable がない場合に限る
+                if settings.qgis_executable.is_none() {
+                    if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions) {
+                        version_in.set_value(&name);
+                    }
+                }
             }
         }
     }
@@ -795,13 +806,36 @@ fn main() {
     }
 
     // CLI 起動
-    let qgis_exe = if let Some(exe) = &args.qgis_executable {
+    let mut qgis_exe = if let Some(exe) = &args.qgis_executable {
         exe.clone()
     } else if let Some(exe) = &settings.qgis_executable {
         exe.clone()
     } else {
         "".to_string()
     };
+
+    // CLI/非GUI 時: qgis_exe が指定されていない場合、プロジェクトのバージョンに合う
+    // インストール済み QGIS を自動選択する。選択はあくまでフォールバックで、明示指定が優先。
+    if qgis_exe.is_empty() {
+        // プロジェクト候補: current_project を優先し、なければ project_path[0]
+        let proj_candidate = settings.current_project.as_deref()
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+            .or_else(|| settings.project_path.first().cloned());
+        if let Some(proj) = proj_candidate {
+            let effective = if PathBuf::from(&proj).is_absolute() {
+                proj.clone()
+            } else {
+                PathBuf::from(&settings_dir).join(&proj).to_string_lossy().to_string()
+            };
+            if let Some(ver) = get_project_file_version(&effective) {
+                let avail = get_available_qgis_versions();
+                if let Some((_name, path)) = find_matching_available_for_project(&ver, &avail) {
+                    qgis_exe = path;
+                }
+            }
+        }
+    }
 
     let userrole = settings.userrole.as_deref().unwrap_or("Viewer").to_string();
     println!("起動: プロファイル '{}' でQGISを起動します...", profile_to_use);
@@ -1719,6 +1753,32 @@ fn get_project_file_version(path: &str) -> Option<String> {
             None
         }
     }
+}
+
+/// 指定されたプロジェクトのバージョン文字列に一致する
+/// `get_available_qgis_versions()` のエントリを返す。
+/// マッチはまず major.minor の部分一致を試し、次に major のみでフォールバックする。
+fn find_matching_available_for_project(project_ver: &str, available: &Vec<(String, String)>) -> Option<(String, String)> {
+    let pv = project_ver.trim();
+    if pv.is_empty() { return None; }
+    let parts: Vec<&str> = pv.split('.').collect();
+    let mut candidates: Vec<String> = Vec::new();
+    if parts.len() >= 2 {
+        candidates.push(format!("{}.{}", parts[0], parts[1]));
+    }
+    candidates.push(parts[0].to_string());
+
+    for cand in &candidates {
+        let cand_l = cand.to_lowercase();
+        for (name, path) in available {
+            let name_l = name.to_lowercase();
+            let path_l = path.to_lowercase();
+            if name_l.contains(&cand_l) || path_l.contains(&cand_l) {
+                return Some((name.clone(), path.clone()));
+            }
+        }
+    }
+    None
 }
 
 type VersionCache = Arc<Mutex<std::collections::HashMap<String, (SystemTime, String)>>>;
