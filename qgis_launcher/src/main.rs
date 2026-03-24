@@ -108,6 +108,31 @@ fn debug_log(msg: &str) {
     }
 }
 
+/// 文字列から最初に現れる連続する数字列を抜き出してメジャーバージョンとする。
+/// 例: "QGIS 3.44.8" -> Some("3") , "qgis 4.0.0" -> Some("4")
+fn extract_major(s: &str) -> Option<String> {
+    let bs = s.as_bytes();
+    let mut i = 0usize;
+    while i < bs.len() {
+        let c = bs[i] as char;
+        if c.is_ascii_digit() {
+            let start = i;
+            i += 1;
+            while i < bs.len() {
+                let c2 = bs[i] as char;
+                if c2.is_ascii_digit() {
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+            return Some(String::from_utf8_lossy(&bs[start..i]).to_string());
+        }
+        i += 1;
+    }
+    None
+}
+
 /// QGIS起動用ランチャー
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -648,9 +673,10 @@ fn run_gui() {
         debug_log(&format!("DEBUG: initial_project_version='{}'", ver));
         if let Some((match_name, match_path)) = find_matching_available_for_project(ver, &available_versions) {
             let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
-            let current_sel = version_in.value().unwrap_or_default().to_lowercase();
-            debug_log(&format!("DEBUG: current_sel='{}', proj_major='{}', match_name='{}', match_path='{}'", current_sel, proj_major, match_name, match_path));
-            if current_sel.is_empty() || !current_sel.contains(&proj_major) {
+            let current_sel = version_in.value().unwrap_or_default();
+            let current_sel_major = extract_major(&current_sel.to_lowercase()).unwrap_or_default();
+            debug_log(&format!("DEBUG: current_sel='{}', current_sel_major='{}', proj_major='{}', match_name='{}', match_path='{}'", current_sel, current_sel_major, proj_major, match_name, match_path));
+            if current_sel.is_empty() || current_sel_major != proj_major {
                 debug_log(&format!("DEBUG: overriding selection to '{}'", match_name));
                 version_in.set_value(&match_name);
             } else {
@@ -686,9 +712,10 @@ fn run_gui() {
                         debug_log(&format!("DEBUG(callback): selected actual='{}' -> project_version='{}'", actual, ver));
                         if let Some((name, path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
                             let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
-                            let current_sel = version_in_for_closure.value().unwrap_or_default().to_lowercase();
-                            debug_log(&format!("DEBUG(callback): match_name='{}', match_path='{}', current_sel='{}', proj_major='{}'", name, path, current_sel, proj_major));
-                            if !current_sel.contains(&proj_major) {
+                            let current_sel = version_in_for_closure.value().unwrap_or_default();
+                            let current_sel_major = extract_major(&current_sel.to_lowercase()).unwrap_or_default();
+                            debug_log(&format!("DEBUG(callback): match_name='{}', match_path='{}', current_sel='{}', current_sel_major='{}', proj_major='{}'", name, path, current_sel, current_sel_major, proj_major));
+                            if current_sel_major != proj_major {
                                 debug_log(&format!("DEBUG(callback): overriding selection to '{}'", name));
                                 version_in_for_closure.set_value(&name);
                             }
@@ -886,10 +913,11 @@ fn main() {
                     if qgis_exe.is_empty() {
                         qgis_exe = path;
                     } else {
-                        // 既に設定値がある場合、設定されている実行ファイルパスに
-                        // プロジェクトの major が含まれているか確認し、含まれていなければ上書きする
+                        // 既に設定値がある場合、設定されている実行ファイルパスのメジャーを抽出して
+                        // プロジェクトのメジャーと比較し、異なれば上書きする
                         let ql = qgis_exe.to_lowercase();
-                        if !ql.contains(&proj_major) {
+                        let ql_major = extract_major(&ql).unwrap_or_default();
+                        if ql_major != proj_major {
                             qgis_exe = path;
                         }
                     }
