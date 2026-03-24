@@ -627,7 +627,11 @@ fn run_gui() {
                 if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
                     proj_ver_for_closure.set_label(&ver);
                     if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
-                        version_in_for_closure.set_value(&name);
+                        let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
+                        let current_sel = version_in_for_closure.value().unwrap_or_default().to_lowercase();
+                        if !current_sel.contains(&proj_major) {
+                            version_in_for_closure.set_value(&name);
+                        }
                     }
                 } else {
                     proj_ver_for_closure.set_label("");
@@ -646,9 +650,14 @@ fn run_gui() {
         if !initial_actual.is_empty() {
             if let Some(ver) = get_project_version_cached(&initial_actual, &version_cache) {
                 proj_ver_for_init.set_label(&ver);
-                // 自動選択: 設定に qgis_executable がない場合に限る
-                if settings.qgis_executable.is_none() {
-                    if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions) {
+                if let Some((name, _path)) = find_matching_available_for_project(&ver, &available_versions) {
+                    // project major (e.g. "4" from "4.0.0-...")
+                    let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
+                    let current_sel = version_in.value().unwrap_or_default().to_lowercase();
+                    // 自動選択の条件:
+                    // - 設定に qgis_executable がない
+                    // - または 現在選択中の QGIS 表示名がプロジェクトの major を含まない
+                    if settings.qgis_executable.is_none() || !current_sel.contains(&proj_major) {
                         version_in.set_value(&name);
                     }
                 }
@@ -816,8 +825,8 @@ fn main() {
 
     // CLI/非GUI 時: qgis_exe が指定されていない場合、プロジェクトのバージョンに合う
     // インストール済み QGIS を自動選択する。選択はあくまでフォールバックで、明示指定が優先。
-    if qgis_exe.is_empty() {
-        // プロジェクト候補: current_project を優先し、なければ project_path[0]
+    // プロジェクト候補: current_project を優先し、なければ project_path[0]
+    if args.qgis_executable.is_none() {
         let proj_candidate = settings.current_project.as_deref()
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
@@ -829,9 +838,19 @@ fn main() {
                 PathBuf::from(&settings_dir).join(&proj).to_string_lossy().to_string()
             };
             if let Some(ver) = get_project_file_version(&effective) {
+                let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
                 let avail = get_available_qgis_versions();
                 if let Some((_name, path)) = find_matching_available_for_project(&ver, &avail) {
-                    qgis_exe = path;
+                    if qgis_exe.is_empty() {
+                        qgis_exe = path;
+                    } else {
+                        // 既に設定値がある場合、設定されている実行ファイルパスに
+                        // プロジェクトの major が含まれているか確認し、含まれていなければ上書きする
+                        let ql = qgis_exe.to_lowercase();
+                        if !ql.contains(&proj_major) {
+                            qgis_exe = path;
+                        }
+                    }
                 }
             }
         }
