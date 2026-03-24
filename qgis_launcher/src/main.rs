@@ -21,7 +21,6 @@ use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 use zip::ZipArchive;
 use std::io::Read;
-use std::io::Write;
 
 #[cfg(feature = "gui")]
 use fltk::{prelude::*, *};
@@ -93,20 +92,7 @@ fn get_default_settings_dir() -> String {
         .unwrap_or_else(|_| ".".to_string())
 }
 
-/// デバッグ情報を実行ファイルの隣にある `qgis_launcher_debug.log` に追記します。
-fn debug_log(msg: &str) {
-    let ts = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    if let Ok(mut exe) = env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            let log_path = parent.join("qgis_launcher_debug.log");
-            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&log_path) {
-                let _ = writeln!(f, "[{}] {}", ts, msg);
-            }
-        }
-    }
-}
+// debug logging to file removed
 
 /// 文字列から最初に現れる連続する数字列を抜き出してメジャーバージョンとする。
 /// 例: "QGIS 3.44.8" -> Some("3") , "qgis 4.0.0" -> Some("4")
@@ -131,6 +117,43 @@ fn extract_major(s: &str) -> Option<String> {
         i += 1;
     }
     None
+}
+
+/// 文字列中から先頭に現れる数字ドット区切りのセグメントを抽出し、
+/// 最大3セグメント (major, minor, patch) を返す。
+/// 例: "4.0.0-Norrköping" -> vec!["4","0","0"]
+fn parse_version_parts(s: &str) -> Vec<String> {
+    let mut parts: Vec<String> = Vec::new();
+    let bytes = s.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if (bytes[i] as char).is_ascii_digit() {
+            // parse first number
+            let start = i;
+            while i < bytes.len() && (bytes[i] as char).is_ascii_digit() { i += 1; }
+            parts.push(String::from_utf8_lossy(&bytes[start..i]).to_string());
+            // try to parse subsequent .number segments up to 2 more
+            for _ in 0..2 {
+                if i < bytes.len() && bytes[i] as char == '.' {
+                    // peek ahead for digits
+                    let mut j = i + 1;
+                    if j < bytes.len() && (bytes[j] as char).is_ascii_digit() {
+                        let start2 = j;
+                        while j < bytes.len() && (bytes[j] as char).is_ascii_digit() { j += 1; }
+                        parts.push(String::from_utf8_lossy(&bytes[start2..j]).to_string());
+                        i = j;
+                    } else {
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+            break;
+        }
+        i += 1;
+    }
+    parts
 }
 
 /// QGIS起動用ランチャー
@@ -639,14 +662,12 @@ fn run_gui() {
         .unwrap_or(initial_display.clone());
     let initial_project_version = if !initial_actual.is_empty() {
         let v = get_project_version_cached(&initial_actual, &version_cache);
-        debug_log(&format!("DEBUG: initial_actual='{}' -> project_version={:?}", initial_actual, v));
         v
     } else { None };
 
     let available_versions = get_available_qgis_versions();
-    debug_log(&format!("DEBUG: available_versions count={}", available_versions.len()));
     for (n, p) in &available_versions {
-        debug_log(&format!("DEBUG: candidate: '{}' -> {}", n, p));
+        // candidate list (no debug log)
     }
     for (name, _) in &available_versions {
         version_in.add(name);
@@ -670,20 +691,13 @@ fn run_gui() {
     // プロジェクトバージョンが得られている場合、保存済み選択がプロジェクトの major を含まない
     // 場合は自動選択で上書きする
     if let Some(ver) = &initial_project_version {
-        debug_log(&format!("DEBUG: initial_project_version='{}'", ver));
         if let Some((match_name, match_path)) = find_matching_available_for_project(ver, &available_versions) {
             let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
             let current_sel = version_in.value().unwrap_or_default();
             let current_sel_major = extract_major(&current_sel.to_lowercase()).unwrap_or_default();
-            debug_log(&format!("DEBUG: current_sel='{}', current_sel_major='{}', proj_major='{}', match_name='{}', match_path='{}'", current_sel, current_sel_major, proj_major, match_name, match_path));
             if current_sel.is_empty() || current_sel_major != proj_major {
-                debug_log(&format!("DEBUG: overriding selection to '{}'", match_name));
                 version_in.set_value(&match_name);
-            } else {
-                debug_log(&format!("DEBUG: keeping current selection '{}'", current_sel));
             }
-        } else {
-            debug_log(&format!("DEBUG: no matching available version found for project version '{}'", ver));
         }
     }
 
@@ -709,14 +723,11 @@ fn run_gui() {
             if actual.to_lowercase().ends_with(".qgz") || actual.to_lowercase().ends_with(".qgs") {
                         if let Some(ver) = get_project_version_cached(&actual, &cache_for_closure) {
                         proj_ver_for_closure.set_label(&ver);
-                        debug_log(&format!("DEBUG(callback): selected actual='{}' -> project_version='{}'", actual, ver));
                         if let Some((name, path)) = find_matching_available_for_project(&ver, &available_versions_for_closure) {
                             let proj_major = ver.split('.').next().unwrap_or("").to_lowercase();
                             let current_sel = version_in_for_closure.value().unwrap_or_default();
                             let current_sel_major = extract_major(&current_sel.to_lowercase()).unwrap_or_default();
-                            debug_log(&format!("DEBUG(callback): match_name='{}', match_path='{}', current_sel='{}', current_sel_major='{}', proj_major='{}'", name, path, current_sel, current_sel_major, proj_major));
                             if current_sel_major != proj_major {
-                                debug_log(&format!("DEBUG(callback): overriding selection to '{}'", name));
                                 version_in_for_closure.set_value(&name);
                             }
                         }
@@ -1850,21 +1861,41 @@ fn get_project_file_version(path: &str) -> Option<String> {
 fn find_matching_available_for_project(project_ver: &str, available: &Vec<(String, String)>) -> Option<(String, String)> {
     let pv = project_ver.trim();
     if pv.is_empty() { return None; }
-    let parts: Vec<&str> = pv.split('.').collect();
-    let mut candidates: Vec<String> = Vec::new();
-    if parts.len() >= 2 {
-        candidates.push(format!("{}.{}", parts[0], parts[1]));
-    }
-    candidates.push(parts[0].to_string());
 
-    for cand in &candidates {
-        let cand_l = cand.to_lowercase();
+    // 正規化して numeric parts を取得
+    let pv_parts = parse_version_parts(pv);
+    if pv_parts.is_empty() { return None; }
+
+    // まず major.minor の完全一致を試す（両方存在する場合）
+    if pv_parts.len() >= 2 {
+        let target_major = &pv_parts[0];
+        let target_minor = &pv_parts[1];
         for (name, path) in available {
-            let name_l = name.to_lowercase();
-            let path_l = path.to_lowercase();
-            if name_l.contains(&cand_l) || path_l.contains(&cand_l) {
+            let combined = format!("{} {}", name, path);
+            let av_parts = parse_version_parts(&combined);
+            if av_parts.len() >= 2 && &av_parts[0] == target_major && &av_parts[1] == target_minor {
                 return Some((name.clone(), path.clone()));
             }
+        }
+    }
+
+    // 次に major の一致を試す
+    let target_major = &pv_parts[0];
+    for (name, path) in available {
+        let combined = format!("{} {}", name, path);
+        let av_parts = parse_version_parts(&combined);
+        if !av_parts.is_empty() && &av_parts[0] == target_major {
+            return Some((name.clone(), path.clone()));
+        }
+    }
+
+    // 最後に以前の文字列包含フォールバック（互換性保護）
+    let cand = target_major.to_lowercase();
+    for (name, path) in available {
+        let name_l = name.to_lowercase();
+        let path_l = path.to_lowercase();
+        if name_l.contains(&cand) || path_l.contains(&cand) {
+            return Some((name.clone(), path.clone()));
         }
     }
     None
