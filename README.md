@@ -395,6 +395,7 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
   "path_aliases": {
     "BOX": "%USERPROFILE%\\Box",
     "OneDrive": "%OneDrive%",
+    "SharePoint": "%OneDriveCommercial%\\<サイト名>\\Geo_Portal",
     "OneDriveBiz": "%OneDriveCommercial%",
     "GoogleDrive": "G:\\マイドライブ"
   },
@@ -444,6 +445,7 @@ QGIS プロジェクトファイル（.qgs）のデータソースパスを `Q:\
 | **OneDrive（個人）** | OneDrive アプリが動作していれば `%OneDrive%` 環境変数が自動設定される | `%OneDrive%` |
 | **OneDrive（法人/Microsoft 365）** | サインイン後に `%OneDriveCommercial%` 環境変数が自動設定される | `%OneDriveCommercial%` |
 | **Google Drive for Desktop** | Google Drive for Desktop をインストール、ドライブレター（例: `G:`）を確認 | `G:\マイドライブ`（ドライブレターは環境により異なるため `path_aliases` で指定） |
+| **SharePoint（ライブラリ）** | ブラウザで対象の SharePoint サイトのドキュメントライブラリを開き「同期」をクリックして OneDrive と同期してください。同期後に作成されるローカルフォルダ（通常は `%OneDriveCommercial%` 以下）を `path_aliases` に設定してください（例: `%OneDriveCommercial%\\<サイト名>\\Geo_Portal`）。 | `%OneDriveCommercial%\\<サイト名>\\Geo_Portal` |
 
 - Q: の `local_cache`（`C:\qgis_cache\master` 等）は初回起動時に自動作成されます。
 - OneDrive は会社名がパスに含まれる（例: `OneDrive - 株式会社XXX`）ため、ユーザーごとにパスが異なる場合があります。その場合は[ユーザーオーバーライド](#ユーザーごとの設定オーバーライドqgis_settingsusername.json)で `path_aliases` を上書きしてください。
